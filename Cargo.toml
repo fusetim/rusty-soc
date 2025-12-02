@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "silicon",
+    "silicon-hal",
+    "silicon-std",
+]
+resolver = "3"

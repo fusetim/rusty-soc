@@ -1,0 +1,9 @@
+pub const LEDS_ADDR: usize     = 0x10004; // 10000000000000100
+pub const OLED_ADDR: usize     = 0x10008; // 10000000000001000
+pub const OLED_RST_ADDR: usize = 0x10010; // 10000000000010000
+pub const UART_ADDR: usize     = 0x10020; // 10000000000100000
+pub const SDCARD_ADDR: usize   = 0x10080; // 10000000010000000
+pub const BUTTONS_ADDR: usize  = 0x10100; // 10000000100000000
+pub const DISPLAY_ADDR: usize  = 0x14000; // 10100000000000000
+pub const AUDIO_ADDR: usize    = 0x18000; // 11000000000000000
+

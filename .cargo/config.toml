@@ -1,0 +1,2 @@
+[target.riscv32i-unknown-none-elf]
+rustflags = ["-C", "link-args=--gc-sections", "-Z", "no-unique-section-names"]

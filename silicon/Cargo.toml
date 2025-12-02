@@ -1,0 +1,18 @@
+[package]
+name = "silicon"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+silicon-hal = { path = "../silicon-hal" }
+
+[profile.dev]
+panic = "abort"
+strip = true
+opt-level = "s"
+
+[profile.release]
+panic = "abort"
