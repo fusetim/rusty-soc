@@ -1,7 +1,17 @@
-use crate::led::LedPeripherals;
-
+use crate::{delay::SocDelay, gpio::GpioPeripheral};
 
 /// Peripherals
+#[derive(Debug)]
 pub struct Peripherals {
-    pub leds: LedPeripherals,    
+    pub gpio: GpioPeripheral,
+    pub delay: SocDelay,
+}
+
+impl Peripherals {
+    pub(crate) fn new() -> Self {
+        Peripherals {
+            gpio: GpioPeripheral::new(),
+            delay: SocDelay,
+        }
+    }
 }

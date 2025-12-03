@@ -2,12 +2,11 @@
 
 use crate::peripherals::Peripherals;
 
-pub(crate) mod config;
+pub mod config;
 pub(crate) mod peripherals;
-pub mod led;
+pub mod gpio;
+pub mod delay;
 
 pub fn init() -> Peripherals {
-    Peripherals {
-        leds: led::LedPeripherals::new(),
-    }
+    return Peripherals::new();
 } 
