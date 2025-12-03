@@ -16,3 +16,5 @@ opt-level = "s"
 
 [profile.release]
 panic = "abort"
+strip = true
+opt-level = "s"

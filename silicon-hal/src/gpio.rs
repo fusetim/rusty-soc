@@ -9,6 +9,7 @@ pub(crate) const INTERNAL_GPIO: GpioIPeripheral = GpioIPeripheral;
 
 impl GpioIPeripheral {
     /// Set individual LED state
+    #[inline(always)]
     fn set_led(&self, n: u8, state: bool) {
         let mut leds = self.get_leds();
         if state {
@@ -36,6 +37,7 @@ impl GpioIPeripheral {
     /// * `n` - The LED number (0-7)
     /// # Returns   
     /// A boolean representing the state of the LED
+    #[inline(always)]
     fn get_led(&self, n: u8) -> bool {
         let leds = self.get_leds();
         return (leds & (1 << n)) != 0;
@@ -56,6 +58,7 @@ impl GpioIPeripheral {
     /// * `n` - The Button number (0-7)
     /// # Returns
     /// A boolean representing the state of the Button
+    #[inline(always)]
     fn get_button(&self, n: u8) -> bool {
         let buttons = self.get_buttons();
         return (buttons & (1 << n)) != 0;
@@ -102,11 +105,13 @@ macro_rules! impl_led_pin {
         }
         
         impl OutputPin for $pin {
+            #[inline(always)]
             fn set_low(&mut self) -> Result<(), Self::Error> {
                 INTERNAL_GPIO.set_led($pin::nth(), false);
                 Ok(())
             }
         
+            #[inline(always)]
             fn set_high(&mut self) -> Result<(), Self::Error> {
                 INTERNAL_GPIO.set_led($pin::nth(), true);
                 Ok(())
@@ -114,10 +119,12 @@ macro_rules! impl_led_pin {
         }
         
         impl StatefulOutputPin for $pin {
+            #[inline(always)]
             fn is_set_high(&mut self) -> Result<bool, Self::Error> {
                 Ok(INTERNAL_GPIO.get_led($pin::nth()))
             }
         
+            #[inline(always)]
             fn is_set_low(&mut self) -> Result<bool, Self::Error> {
                 Ok(!INTERNAL_GPIO.get_led($pin::nth()))
             }
@@ -146,10 +153,12 @@ macro_rules! impl_btn_pin {
         }
 
         impl InputPin for $pin {
+            #[inline(always)]
             fn is_high(&mut self) -> Result<bool, Self::Error> {
                 Ok(INTERNAL_GPIO.get_button($pin::nth()))
             }
         
+            #[inline(always)]
             fn is_low(&mut self) -> Result<bool, Self::Error> {
                 Ok(!INTERNAL_GPIO.get_button($pin::nth()))
             }
@@ -224,6 +233,7 @@ pub struct GpioPeripheral {
 }
 
 impl GpioPeripheral {
+    #[inline(always)]
     pub(crate) fn new() -> Self {
         GpioPeripheral {
             led0: GpioLed0,
@@ -245,14 +255,17 @@ impl GpioPeripheral {
         }
     }
 
+    #[inline(always)]
     pub fn set_leds(&self, value: u8) {
         INTERNAL_GPIO.set_leds(value);
     }
 
+    #[inline(always)]
     pub fn get_leds(&self) -> u8 {
         INTERNAL_GPIO.get_leds()
     }
 
+    #[inline(always)]
     pub fn get_buttons(&self) -> u8 {
         INTERNAL_GPIO.get_buttons()
     }

@@ -9,6 +9,7 @@ pub struct Peripherals {
 }
 
 impl Peripherals {
+    #[inline(always)]
     pub(crate) fn new() -> Self {
         Peripherals {
             gpio: GpioPeripheral::new(),
