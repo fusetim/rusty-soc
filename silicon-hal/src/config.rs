@@ -11,12 +11,16 @@ pub const GPIO_REG_BTNS: usize = GPIO_BASE | (0x01 << 2);
 // DAC Peripheral (AUDIO)
 pub const DAC_BASE: usize        = PERIPHERAL_BASE | (0b000010 << 10);
 
-// OLED Peripheral (TODO)
-pub const OLED_BASE: usize         = PERIPHERAL_BASE | (0b000011 << 10);
-
 // UART Peripheral (TODO)
-pub const UART_BASE: usize        = PERIPHERAL_BASE | (0b000100 << 10);
+pub const UART_BASE: usize       = PERIPHERAL_BASE | (0b000011 << 10);
 
 // SPI Peripheral (TODO)
-pub const SPI_BASE: usize        = PERIPHERAL_BASE | (0b000101 << 10);
+pub const SPI_BASE: usize        = PERIPHERAL_BASE | (0b000100 << 10);
+
+// OLED Framebuffer (TODO)
+// IMPORTANT: Does not work like the other peripherals, 
+//            this is a memory region starting at this address.
+//            Memory starts at OLED_BASE (0x4000) and goes up to OLED_BASE + 16383 (0x3FFF)
+pub const OLED_BASE: usize       = PERIPHERAL_BASE | (0b010000 << 10);
+
 
