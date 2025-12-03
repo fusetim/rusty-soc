@@ -17,10 +17,13 @@ pub const UART_BASE: usize       = PERIPHERAL_BASE | (0b000011 << 10);
 // SPI Peripheral (TODO)
 pub const SPI_BASE: usize        = PERIPHERAL_BASE | (0b000100 << 10);
 
-// OLED Framebuffer (TODO)
+// Framebuffer Config (TODO)
+pub const FB_CONFIG_BASE: usize = PERIPHERAL_BASE | (0b001111 << 10);
+
+// Framebuffer (TODO)
 // IMPORTANT: Does not work like the other peripherals, 
 //            this is a memory region starting at this address.
 //            Memory starts at OLED_BASE (0x4000) and goes up to OLED_BASE + 16383 (0x3FFF)
-pub const OLED_BASE: usize       = PERIPHERAL_BASE | (0b010000 << 10);
+pub const FB_BASE: usize       = PERIPHERAL_BASE | (0b010000 << 10);
 
 

@@ -1,10 +1,11 @@
-use crate::{delay::SocDelay, gpio::GpioPeripheral};
+use crate::{delay::SocDelay, fb::FbPeripheral, gpio::GpioPeripheral};
 
 /// Peripherals
 #[derive(Debug)]
 pub struct Peripherals {
     pub gpio: GpioPeripheral,
     pub delay: SocDelay,
+    pub fb: FbPeripheral,
 }
 
 impl Peripherals {
@@ -12,6 +13,7 @@ impl Peripherals {
         Peripherals {
             gpio: GpioPeripheral::new(),
             delay: SocDelay,
+            fb: FbPeripheral,
         }
     }
 }
