@@ -8,7 +8,7 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 }
 
 #[unsafe(no_mangle)]
-fn main() {
+fn main() -> ! {
     /*
     SOC_LED.set(0b0000_0000); // Turn off all LEDs
 

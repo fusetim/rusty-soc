@@ -10,7 +10,6 @@ SECTIONS {
   __stacktop = ORIGIN(ram) + LENGTH(ram);
 
   .text 0x00000000 : {
-        crt0.o (.text*)
         *(.text*)
         *(.sdata*)
         *(.srodata*)
@@ -19,4 +18,4 @@ SECTIONS {
         *(.data*)
         *(.sbss*)
   } >ram
-}
+} 
