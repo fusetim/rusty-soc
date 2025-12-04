@@ -52,7 +52,7 @@ make soc BOARD=ulx3s
 If you have the ULX3S board connected, it should have flashed the design automatically. If not, you can manually flash it using:
 
 ```bash
-openFPGA -b ulx3s BUILD/build.bit
+openFPGALoader -b ulx3s BUILD/build.bit
 ```
 
 ### Enjoy!

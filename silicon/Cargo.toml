@@ -8,6 +8,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 silicon-hal = { path = "../silicon-hal" }
+embedded-hal = "1"
 
 [profile.dev]
 panic = "abort"
