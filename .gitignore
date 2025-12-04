@@ -3,3 +3,4 @@ target/
 *.hex
 *.s
 *.o
+BUILD/
