@@ -4,3 +4,4 @@ target/
 *.s
 *.o
 BUILD/
+!entry.s

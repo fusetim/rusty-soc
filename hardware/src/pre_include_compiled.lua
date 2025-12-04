@@ -2,9 +2,9 @@
 -- include ASM code as a BROM
 -- MIT license, see LICENSE_MIT in Silice repo root
 
-local in_asm = io.open(findfile('../../oops-i-rust-firm-again/target/riscv32i-unknown-none-elf/release/silicon.hex'), 'r')
+local in_asm = io.open(findfile('../../target/riscv32i-unknown-none-elf/release/silicon.hex'), 'r')
 if not in_asm then
-  error('please compile code first using the Makefile in ./firmware')
+  error('please compile code first using cargo xtask (in the parent repo)')
 end
 
 meminit = '{' -- exposed to the outside for BRAM initializ
