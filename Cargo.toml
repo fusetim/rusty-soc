@@ -2,6 +2,6 @@
 members = [
     "silicon",
     "silicon-hal",
-    "silicon-std",
+    "silicon-pac",
 ]
 resolver = "3"
