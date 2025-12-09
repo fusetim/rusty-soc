@@ -1,18 +1,25 @@
+use crate::timer::Timer;
+
 pub use embedded_hal::delay::DelayNs;
 
 const NS_PER_CLOCK_CYCLES: u32 = 40; // 40 ns per clock cycle at 25 MHz
 const CLOCK_CYCLES_PER_INSTRUCTION: u32 = 3; // 3 clock cycles per instruction cycle
 const NS_PER_INSTRUCTION_CYCLE: u32 = NS_PER_CLOCK_CYCLES * CLOCK_CYCLES_PER_INSTRUCTION; // 120 ns per instruction cycle
 
-/// Delay peripheral
+pub const INTR_DELAY: IntrDelay = IntrDelay { _inner: () };
+pub const TIMER0_DELAY: Timer0Delay = Timer0Delay { _inner: () };
+
+/// Delay peripheral based on the CPU intruction cycles
 ///
 /// 1 instruction cycle = 3 clock cycles (4 for Store/Load)
 /// Clock speed = 25 MHz
 /// Therefore, 1 instruction cycle = 1 / (25 MHz / 3) = 120 ns
-#[derive(Debug, Clone, Copy, Default)]
-pub struct SocDelay;
+#[derive(Debug, Clone, Copy)]
+pub struct IntrDelay {
+    _inner: (),
+}
 
-impl DelayNs for SocDelay {
+impl DelayNs for IntrDelay {
     #[inline(always)]
     fn delay_ns(&mut self, ns: u32) {
         if ns <= NS_PER_INSTRUCTION_CYCLE {
@@ -51,6 +58,43 @@ impl DelayNs for SocDelay {
             };
             us -= 1; // 3 for the subtraction
         }
+    }
+
+    #[inline(always)]
+    fn delay_ms(&mut self, mut ms: u32) {
+        while ms > u32::MAX / 1024 {
+            self.delay_us(u32::MAX / 1024 * 1000);
+            ms -= u32::MAX / 1024;
+        }
+        self.delay_us(ms * 1000);
+    }
+}
+
+/// Delay peripheral based on TIMER0 (1MHz clock)
+///
+/// TIMER0 is 64-bit clock which increments every 1 micros.
+#[derive(Debug, Clone, Copy)]
+pub struct Timer0Delay {
+    _inner: (),
+}
+
+impl DelayNs for Timer0Delay {
+    #[inline(always)]
+    fn delay_ns(&mut self, ns: u32) {
+        if ns <= NS_PER_INSTRUCTION_CYCLE {
+            // Less than or equal to NS_PER_INSTRUCTION_CYCLE ns, waste one cycle only
+            unsafe { core::arch::asm!("nop") };
+            return;
+        }
+
+        let timer = Timer::new_timer0();
+        timer.delay_us(ns / 1000);
+    }
+
+    #[inline(always)]
+    fn delay_us(&mut self, us: u32) {
+        let timer = Timer::new_timer0();
+        timer.delay_us(us);
     }
 
     #[inline(always)]

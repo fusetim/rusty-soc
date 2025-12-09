@@ -1,47 +1,42 @@
 #![no_std]
 #![no_main]
 use embedded_hal::digital::OutputPin;
-use silicon_hal::delay::{DelayNs, SocDelay};
+use silicon_hal::delay::{DelayNs, INTR_DELAY};
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-const DELAY: SocDelay = SocDelay;
 
 #[unsafe(no_mangle)]
 fn main() -> ! {
-    let peripherals = silicon_hal::init();
-    let gpio = peripherals.gpio;
-    let mut led_second = gpio.led0;
-    let mut led_minute = gpio.led1;
-    let mut led_wait = gpio.led7;
+    use silicon_hal::gpio::{Pin};
 
-    // Indicate startup by lighting up LED7 for a short time
-    led_wait.set_high().unwrap();
-    delay_ms(2000);
-    led_wait.set_low().unwrap();
+    let mut peripherals = silicon_hal::init();
 
-    let mut seconds = 0;
+    let mut led0 = Pin::new_output(peripherals.gpio.take_led0().unwrap());
+    let mut led1 = Pin::new_output(peripherals.gpio.take_led1().unwrap());
+
+    let mut count : u8 = 0;
     loop {
-        if seconds > 60 {
-            led_minute.set_high().unwrap();
+        if count % 2 == 0 {
+            led0.set_high();
         } else {
-            led_minute.set_low().unwrap();
+            led0.set_low();
         }
-        if (seconds % 2) == 0 {
-            led_second.set_high().unwrap();
+        if count % 4 == 0 {
+            led1.set_high();
         } else {
-            led_second.set_low().unwrap();
+            //led1.set_low();
         }
+        count = count.wrapping_add(1);
         delay_ms(1000);
-        seconds += 1;
     }
 }
 
 #[inline(always)]
 pub fn delay_ms(ms: u32) {
     #[allow(const_item_mutation)]
-    DELAY.delay_ms(ms);
+    INTR_DELAY.delay_ms(ms);
 }

@@ -1,14 +1,19 @@
 #![no_std]
 
-use crate::peripherals::Peripherals;
+pub use silicon_pac as pac;
 
-pub mod config;
 pub mod dac;
 pub mod delay;
-pub mod fb;
 pub mod gpio;
-pub(crate) mod peripherals;
+pub mod timer;
+pub mod typesafe;
 
-pub fn init() -> Peripherals {
-    return Peripherals::new();
+pub struct Peripheral {
+    pub gpio: gpio::Gpio,
+}
+
+pub fn init() -> Peripheral {
+    Peripheral {
+        gpio: gpio::Gpio::new(),
+    }
 }
