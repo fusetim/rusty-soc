@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<device schemaVersion="1.3" xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" xs:noNamespaceSchemaLocation="CMSIS-SVD.xsd">
+    <name>Rusty-Soc</name>
+    <version>1.0</version>
+    <description>Rusty-Soc: A simple SoC with Ice-V RISCV32I CPU</description>
+    <cpu>
+        <name>Ice-V</name>
+        <revision>1.0</revision>
+        <endian>little</endian>
+        <mpuPresent>false</mpuPresent>
+        <fpuPresent>false</fpuPresent>
+        <nvicPrioBits>0</nvicPrioBits>
+        <vendorSystickConfig>false</vendorSystickConfig>
+    </cpu>
+    <addressUnitBits>8</addressUnitBits>
+    <width>32</width>
+    <peripherals>
+        <!-- Peripheral Base Address : 0x10000 -->
+        <!-- Standard peripheral inherits 8 bit for addressing 32-bit words/registers -->
+        <!-- Except Display which comes with a Hardware Framebuffer -->
+
+        <!-- Peripherals > TIMERS > Timer0 -->
+        <peripheral>
+            <!-- Timer0 Base Address is : 0x10000 + 0x000 (len: 0x400)-->
+            <name>Timer0</name>
+            <description>Timer0 peripheral (64-bit counter) at 1MHz.</description>
+            <baseAddress>0x10000</baseAddress>
+            <groupName>Timer</groupName>
+            <addressBlock>
+                <offset>0x0</offset>
+                <size>0x0c</size>
+                <usage>registers</usage>
+            </addressBlock>
+            <addressBlock>
+                <offset>0x0c</offset>
+                <size>0x3f3</size>
+                <usage>reserved</usage>
+            </addressBlock>
+            <registers>
+                <register>
+                    <name>CTRL</name>
+                    <description>Control Register</description>
+                    <addressOffset>0x00</addressOffset>
+                    <size>8</size>
+                    <access>read-write</access>
+                    <resetValue>0x00</resetValue>
+                    <fields>
+                        <field>
+                            <name>ENABLE</name>
+                            <description>Enable Timer</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                        <field>
+                            <name>RESET</name>
+                            <description>Reset Timer to zero</description>
+                            <bitOffset>1</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>LO_VALUE</name>
+                    <description>32 lowest bits of the Timer Value</description>
+                    <addressOffset>0x04</addressOffset>
+                    <size>32</size>
+                    <access>read-only</access>
+                    <resetValue>0x00000000</resetValue>
+                </register>
+                <register>
+                    <name>HI_VALUE</name>
+                    <description>32 highest bits of the Timer Value</description>
+                    <addressOffset>0x04</addressOffset>
+                    <size>32</size>
+                    <access>read-only</access>
+                    <resetValue>0x00000000</resetValue>
+                </register>
+            </registers>
+        </peripheral>
+
+        <!-- Peripherals > GPIO -->
+        <peripheral>
+            <!-- GPIO Base Address is : 0x10000 + 0x400 (len: 0x400)-->
+            <name>GPIO</name>
+            <description>General Purposes Input / Output</description>
+            <baseAddress>0x10400</baseAddress>
+            <groupName>GPIO</groupName>
+            <addressBlock>
+                <offset>0x0</offset>
+                <size>0x08</size>
+                <usage>registers</usage>
+            </addressBlock>
+            <addressBlock>
+                <offset>0x08</offset>
+                <size>0x3f7</size>
+                <usage>reserved</usage>
+            </addressBlock>
+            <registers>
+                <register>
+                    <name>LED</name>
+                    <description>Control of the output of the on-board LEDs.</description>
+                    <addressOffset>0x00</addressOffset>
+                    <size>16</size>
+                    <access>read-write</access>
+                    <resetValue>0x0000</resetValue>
+                    <fields>
+                        <field>
+                            <dim>8</dim>
+                            <dimIncrement>1</dimIncrement>
+                            <name>LED_OUTPUT%s</name>
+                            <description>Set output of the %sth LED</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                        <field>
+                            <dim>8</dim>
+                            <dimIncrement>1</dimIncrement>
+                            <name>LED_MASK%s</name>
+                            <description>Mask/unmask the output for %sth LED. It must be HIGH if you expect LED_OUTPUT%s to have an effect.</description>
+                            <bitOffset>8</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>BTN</name>
+                    <description>Get state of the on-board BTN inputs.</description>
+                    <addressOffset>0x04</addressOffset>
+                    <size>8</size>
+                    <access>read-only</access>
+                    <resetValue>0x00</resetValue>
+                    <fields>
+                        <field>
+                            <dim>8</dim>
+                            <dimIncrement>1</dimIncrement>
+                            <name>BTN_INPUT%s</name>
+                            <description>Get the input from the %sth BTN.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                    </fields>
+                </register>
+            </registers>
+        </peripheral>
+
+        <!-- Peripherals > DAC -->
+        <peripheral>
+            <!-- DAC Base Address is : 0x10000 + 0x800 (len: 0x400)-->
+            <name>DAC</name>
+            <description>On-board Digital-to-Analog Converter, directly wired to the Audio interface.</description>
+            <baseAddress>0x10800</baseAddress>
+            <addressBlock>
+                <offset>0x0</offset>
+                <size>0x04</size>
+                <usage>registers</usage>
+            </addressBlock>
+            <addressBlock>
+                <offset>0x04</offset>
+                <size>0x3fb</size>
+                <usage>reserved</usage>
+            </addressBlock>
+            <registers>
+                <register>
+                    <name>OUTPUT</name>
+                    <description>Control the output of the DAC.</description>
+                    <addressOffset>0x00</addressOffset>
+                    <size>16</size>
+                    <access>write-only</access>
+                    <resetValue>0x0000</resetValue>
+                    <fields>
+                        <field>
+                            <name>LEFT_OUTPUT</name>
+                            <description>Set the left output value (big-endian)</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                        <field>
+                            <name>RIGHT_OUTPUT</name>
+                            <description>Set the right output value (big-endian)</description>
+                            <bitOffset>8</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                    </fields>
+                </register>
+            </registers>
+        </peripheral>
+
+        <!-- Peripherals > Display -->
+        <peripheral>
+            <!-- Display Base Address is : 0x10000 + 0x800 (len: 0x400)-->
+            <name>Display</name>
+            <description>On-board Display interface, with hardware Framebuffer (128x128, RGB565).</description>
+            <baseAddress>0x17c00</baseAddress>
+            <addressBlock>
+                <offset>0x0</offset>
+                <size>0x04</size>
+                <usage>registers</usage>
+            </addressBlock>
+            <addressBlock>
+                <offset>0x04</offset>
+                <size>0x3fb</size>
+                <usage>reserved</usage>
+            </addressBlock>
+            <addressBlock>
+                <offset>0x400</offset>
+                <size>0x8000</size>
+                <usage>buffer</usage>
+            </addressBlock>
+            <registers>
+                <register>
+                    <name>CTRL</name>
+                    <description>Control and Status of the Display Driver.</description>
+                    <addressOffset>0x00</addressOffset>
+                    <size>8</size>
+                    <access>read-write</access>
+                    <resetValue>0</resetValue>
+                    <fields>
+                        <field>
+                            <name>ENABLE_HW_FB</name>
+                            <description>Enable the hardware framebuffer (will refresh at 60Hz).</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                        <field>
+                            <name>CLEAR_HW_FB</name>
+                            <description>Clear the Hardware Framebuffer (every cell will be null)</description>
+                            <bitOffset>7</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                    </fields>
+                </register>
+            </registers>
+        </peripheral>
+    </peripherals>
+</device>
