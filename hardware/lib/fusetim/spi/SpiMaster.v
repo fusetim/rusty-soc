@@ -1,88 +1,93 @@
-module SPIMaster (
-    input clk,
-    input clkr, // CLK reference for SPI timing -- managed outside of this module
+// SpiMaster is a module implementing a Master device for SPI communication.
+// It only perform "byte-transfer" one at a time. But since, SPI_CS is 
+// not managed by this module, multiple bytes are able to be sent in one transmission
+// by just not disenabling the line.
+module SpiMaster #(
+    parameter CPOL = 0,
+    parameter CPHA = 0
+)
+(
+    // clk -- reference clock for communication with the SoC
+    input wire clk,
+    // rst -- active high reset
+    input wire rst,
+    // iclk -- internal module clock 
+    // SPI clock is derived from iclk (divided down at least by two)
+    input wire iclk,
 
-    // SPI GPIO interface
-    output reg SPI_CLK,
-    input  SPI_MISO,
-    output SPI_MOSI,
-    // SPI_CS is managed outside
+    // SPI interface
+    output reg spi_clk, // SPI clock
+    output reg spi_mosi, // SPI Master Out Slave In
+    input wire spi_miso,  // SPI Master In Slave Out
+    // spi_cs -- chip select is not managed by this module, to allow multi-byte transfer.
 
-    // SPI internal communication
-    input [7:0] tx_buf_byte,
-    output reg [7:0] rx_buf_byte,
-
-    // SPI Signal indicators
-    input transfer, // Enable until the transfer is complete (must be high until tx_complete is triggered)
-    output reg tx_buf_busy, // High when the TX buffer is full (cannot accept new data)
-    output reg rx_buf_ready, // High when a new byte has been received (only high for 1 clk cycle)
-    output reg tx_complete, // High when a byte have been completely transfered (only high for 1 clk cycle)
+    // SoC interface
+    // start - High for one clk cycle, it starts the transfer.
+    //         At that point, tx_data must already be ready.
+    input wire start, 
+    // tx_data - the byte to be sent
+    input wire [7:0] tx_data,
+    // rx_data - the received byte from the slave
+    output reg [7:0] rx_data,
+    // completed - High as soon as the rx_data has been received.
+    //             Reset on start/rst rising edge
+    output reg completed
 );
-    // In transmission bytes
-    reg [7:0] tx_byte;
-    reg [7:0] rx_byte;
-    reg [2:0] bit_cnt;
 
-    // Register the pos/neg edge of the SPI clk
-    reg [1:0] SPI_CLKr = 2'b00;
+reg transfer = 0;
+reg enable_clk = 0;
+reg [3:0] bitcnt = 0;
+reg [7:0] tx_byte = 0;
 
-    reg [3:0] state = 3'b111;
+reg send_clk = 1;
+reg recv_clk = 0;
 
-    parameter  S_IDLE     = 3'h0;
-    parameter  S_WRITE1     = 3'h1;
-    parameter  S_READ0    = 3'h2;
-    parameter  S_READ1      = 3'h3;
-    parameter  S_WRITE0      = 3'h4;
-
-    always @(posedge clk) {
-        SPI_CLKr <= {SPI_CLKr[0], clkr};
-    }
-
-    always @(posedge clk) {
-        case(state)
-            S_WRITE1:
-            begin
-                MOSI <= tx_byte[0];
-                tx_byte <= tx_byte[7:1];
-                state <= S_READ0;
+always @(posedge clk) begin
+    if (rst) begin
+        completed <= 0;
+        rx_data <= 0;
+        spi_clk <= 0;
+        transfer <= 0;
+    end else begin 
+        if (start) begin
+            transfer <= 1;
+            bitcnt <= 0;
+            if (start & ~transfer) begin
+                tx_byte <= tx_data;
+                enable_clk <= 1;
             end
-            S_READ0:
-                // 0 states are waiting state for SPI clk 
-                if (SPI_CLKr == 2'b01) begin // posedge
-                    state <= S_READ1;
-                end
-            S_READ1:
-            begin
-                rx_byte <= {rx_byte[6:0], SPI_MISO};
-                state <= S_WRITE0;
-            end
-            S_WRITE0:
-            begin
-                // 0 states are waiting state for SPI clk
-                if (SPI_CLKr == 2'b10) begin // negedge
-                    if (bit_cnt == 3'b000) begin
-                        rx_buf_byte <= rx_byte;
-                        rx_buf_ready <= 1'b1;
-                        tx_buf_busy <= 1'b0;
-                        state <= S_IDLE;             
-                    end
-                    else begin
-                        bit_cnt <= bit_cnt - 1;
-                        state <= S_WRITE1;
-                    end
-                end
-            end
-            S_IDLE:
-            begin
-                rx_buf_ready <= 1'b0;
-                if (transfer) begin
-                    tx_byte <= tx_buf_byte;
-                    tx_buf_busy <= 1'b1;
-                    bit_cnt <= 3'b000;
-                    state <= S_WRITE1;
-                end
-            end
-        endcase
-    }
+        end 
+    end
+end
+
+always @(posedge iclk) begin 
+    if (rst) begin 
+        enable_clk <= 0;
+        send_clk <= 1;
+        recv_clk <= 0;
+        tx_byte <= 0;
+        spi_clk <= 0;
+    end else if (enable_clk) begin 
+        spi_clk <= ~spi_clk;
+        send_clk <= send_clk + 1;
+        recv_clk <= recv_clk + 1;
+    end else begin 
+        spi_clk <= 0;
+    end
+end
+
+always @(posedge send_clk) begin 
+    bitcnt <= bitcnt + 1;
+    tx_byte <= {1'b0, tx_byte[7:1]};
+end
+
+always @(posedge recv_clk) begin 
+    rx_data <= {rx_data[6:0], spi_miso};
+    if (bitcnt == 3'h6) begin
+        completed <= 1;
+    end
+end
+
+assign spi_mosi = tx_byte[0];
 
 endmodule
