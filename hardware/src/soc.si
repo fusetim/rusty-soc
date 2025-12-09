@@ -179,6 +179,7 @@ $$end
        // CPU reading from peripherals
        // TODO: | ((peripheral_r & sd_access)     ? {31b0,    sd_miso} : 32b0)
      | ((peripheral_r & button_access) ? {25b0,       btns} : 32b0)
+     | ((peripheral_r & leds_access)   ? {24b0,      leds} : 32b0) // stateful output
        // TODO: | ((peripheral_r & audio_access)  ? audio_addr_cpu     : 32b0)
     ;
     // writes CPU => RAM
@@ -189,7 +190,8 @@ $$end
     // writes CPU => peripherals
     if (peripheral_w) {
       /// LEDs
-      leds           = leds_access ? prev_wdata[0,8] : leds;
+      uint8 led_mask = leds_access ? prev_wdata[8,8] : 8h00;
+      leds           = (leds & ~led_mask) | (prev_wdata[0,8] & led_mask);
       /// display
       // TODO: if (display_direct_access) {
       // TODO:   // -> whether to send command or data
