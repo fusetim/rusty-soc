@@ -5,7 +5,7 @@ const CLOCK_CYCLES_PER_INSTRUCTION: u32 = 3; // 3 clock cycles per instruction c
 const NS_PER_INSTRUCTION_CYCLE: u32 = NS_PER_CLOCK_CYCLES * CLOCK_CYCLES_PER_INSTRUCTION; // 120 ns per instruction cycle
 
 /// Delay peripheral
-/// 
+///
 /// 1 instruction cycle = 3 clock cycles (4 for Store/Load)
 /// Clock speed = 25 MHz
 /// Therefore, 1 instruction cycle = 1 / (25 MHz / 3) = 120 ns
@@ -13,7 +13,6 @@ const NS_PER_INSTRUCTION_CYCLE: u32 = NS_PER_CLOCK_CYCLES * CLOCK_CYCLES_PER_INS
 pub struct SocDelay;
 
 impl DelayNs for SocDelay {
-
     #[inline(always)]
     fn delay_ns(&mut self, ns: u32) {
         if ns <= NS_PER_INSTRUCTION_CYCLE {
@@ -38,15 +37,18 @@ impl DelayNs for SocDelay {
 
         // Each step of the following loop wastes exactly 25 clock cycles
         // 1 Branch (3 cycles) + 5 NOPs (5 * 3 = 15 cycles) + 1 Load (4 cycles) + 1 Subtraction (3 cycles) = 25 cycles
-        while us > 0 { // 3 for the branch
-            unsafe { core::arch::asm!(
-                "nop",          // 3 clock cycle - 1
-                "nop",          // 3 clock cycle - 2
-                "nop",          // 3 clock cycle - 3
-                "nop",          // 3 clock cycle - 4
-                "nop",          // 3 clock cycle - 5
-                "lw x0, 0(x0)", // 4 clock cycle - 1
-            ) };
+        while us > 0 {
+            // 3 for the branch
+            unsafe {
+                core::arch::asm!(
+                    "nop",          // 3 clock cycle - 1
+                    "nop",          // 3 clock cycle - 2
+                    "nop",          // 3 clock cycle - 3
+                    "nop",          // 3 clock cycle - 4
+                    "nop",          // 3 clock cycle - 5
+                    "lw x0, 0(x0)", // 4 clock cycle - 1
+                )
+            };
             us -= 1; // 3 for the subtraction
         }
     }

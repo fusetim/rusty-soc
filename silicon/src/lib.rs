@@ -1,14 +1,14 @@
 #![no_std]
 #![no_main]
-use silicon_hal::delay::{SocDelay, DelayNs};
 use embedded_hal::digital::OutputPin;
+use silicon_hal::delay::{DelayNs, SocDelay};
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-const DELAY : SocDelay = SocDelay;
+const DELAY: SocDelay = SocDelay;
 
 #[unsafe(no_mangle)]
 fn main() -> ! {

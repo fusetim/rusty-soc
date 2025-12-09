@@ -21,7 +21,7 @@ impl GpioIPeripheral {
     }
 
     /// Set the state of the LEDs
-    /// 
+    ///
     /// # Arguments
     /// * `value` - A 8-bit value representing the state of the LEDs (0-7)
     fn set_leds(&self, value: u8) {
@@ -32,7 +32,7 @@ impl GpioIPeripheral {
     }
 
     /// Get the individual state of an LED
-    /// 
+    ///
     /// # Arguments
     /// * `n` - The LED number (0-7)
     /// # Returns   
@@ -44,7 +44,7 @@ impl GpioIPeripheral {
     }
 
     /// Get the current state of the LEDs
-    /// 
+    ///
     /// # Returns
     /// A 8-bit value representing the state of the LEDs (0-7)
     fn get_leds(&self) -> u8 {
@@ -53,7 +53,7 @@ impl GpioIPeripheral {
     }
 
     /// Get the individual state of a Button
-    /// 
+    ///
     /// # Arguments
     /// * `n` - The Button number (0-7)
     /// # Returns
@@ -65,7 +65,7 @@ impl GpioIPeripheral {
     }
 
     /// Get the current state of the Buttons
-    /// 
+    ///
     /// # Returns
     /// A 8-bit value representing the state of the Buttons (0-7)
     fn get_buttons(&self) -> u8 {
@@ -77,7 +77,7 @@ impl GpioIPeripheral {
 /// GPIO Pin Trait
 /// This trait is implemented by all GPIO pin types to provide
 /// the necessary information for accessing the GPIO peripheral.
-trait GpioPin : Clone + Copy + PartialEq + Eq {
+trait GpioPin: Clone + Copy + PartialEq + Eq {
     /// Returns the memory-mapped address of the GPIO pin"bus"
     fn addr() -> usize;
     /// Returns the pin number withint this GPIO pin"bus"
@@ -103,34 +103,34 @@ macro_rules! impl_led_pin {
         impl ErrorType for $pin {
             type Error = core::convert::Infallible;
         }
-        
+
         impl OutputPin for $pin {
             #[inline(always)]
             fn set_low(&mut self) -> Result<(), Self::Error> {
                 INTERNAL_GPIO.set_led($pin::nth(), false);
                 Ok(())
             }
-        
+
             #[inline(always)]
             fn set_high(&mut self) -> Result<(), Self::Error> {
                 INTERNAL_GPIO.set_led($pin::nth(), true);
                 Ok(())
             }
         }
-        
+
         impl StatefulOutputPin for $pin {
             #[inline(always)]
             fn is_set_high(&mut self) -> Result<bool, Self::Error> {
                 Ok(INTERNAL_GPIO.get_led($pin::nth()))
             }
-        
+
             #[inline(always)]
             fn is_set_low(&mut self) -> Result<bool, Self::Error> {
                 Ok(!INTERNAL_GPIO.get_led($pin::nth()))
             }
         }
     };
-} 
+}
 
 macro_rules! impl_btn_pin {
     ($pin:ident, $pin_n:literal) => {
@@ -157,14 +157,14 @@ macro_rules! impl_btn_pin {
             fn is_high(&mut self) -> Result<bool, Self::Error> {
                 Ok(INTERNAL_GPIO.get_button($pin::nth()))
             }
-        
+
             #[inline(always)]
             fn is_low(&mut self) -> Result<bool, Self::Error> {
                 Ok(!INTERNAL_GPIO.get_button($pin::nth()))
             }
         }
     };
-} 
+}
 
 impl_led_pin!(GpioLed0, 0);
 impl_led_pin!(GpioLed1, 1);

@@ -28,8 +28,8 @@ impl FbColorChannel {
     fn value(&self) -> u8 {
         match self {
             FbColorChannel::Grey => 0b111,
-            FbColorChannel::Red  => 0b100,
-            FbColorChannel::Green=> 0b010,
+            FbColorChannel::Red => 0b100,
+            FbColorChannel::Green => 0b010,
             FbColorChannel::Blue => 0b001,
             FbColorChannel::Disabled => 0b000,
         }
