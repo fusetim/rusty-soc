@@ -1,0 +1,32 @@
+append('../lib/fusetim/spi/SpiMaster.v')
+import('../lib/fusetim/spi/SpiMasterPeripheral.v')
+
+/// SPI Peripheral
+unit spi_peripheral(
+    input uint1 rclk,
+    input uint1 rst,
+    // Memory-mapped I/O interface
+    input uint8    mem_addr,
+    input uint32   mem_wr_data,
+    input uint4    mem_wr_en,
+    output! uint32 mem_rd_data(32b0),
+    // GPIO signals
+    output! uint1 spi_clk,
+    output! uint1 spi_mosi,
+    input   uint1 spi_miso,
+) {
+    SpiMasterPeripheral spi(
+        clk <: clock,
+        rclk <: rclk,
+        rst <: rst,
+        // Memory-mapped I/O interface
+        mem_addr <: mem_addr,
+        mem_wr_data <: mem_wr_data,
+        mem_wr_en <: mem_wr_en,
+        mem_rd_data :> mem_rd_data,
+        // SPI signals
+        spi_clk  :> spi_clk,
+        spi_mosi :> spi_mosi,
+        spi_miso <: spi_miso
+    );
+}

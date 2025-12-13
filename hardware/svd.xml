@@ -192,9 +192,142 @@
             </registers>
         </peripheral>
 
+        <!-- Peripherals > SPI0 -->
+        <peripheral>
+            <!-- SPI0 Base Address is : 0x10000 + 0xC00 (len: 0x400)-->
+            <name>SPI0</name>
+            <description>On-board SPI0 interface (only SPI Master).</description>
+            <baseAddress>0x10C00</baseAddress>
+            <addressBlock>
+                <offset>0x0</offset>
+                <size>0x14</size>
+                <usage>registers</usage>
+            </addressBlock>
+            <addressBlock>
+                <offset>0x14</offset>
+                <size>0x3ec</size>
+                <usage>reserved</usage>
+            </addressBlock>
+            <registers>
+                <register>
+                    <name>CTRL</name>
+                    <description>Control of the SPI0 interface.</description>
+                    <addressOffset>0x00</addressOffset>
+                    <size>8</size>
+                    <access>write-only</access>
+                    <resetValue>0</resetValue>
+                    <fields>
+                        <field>
+                            <name>START</name>
+                            <description>Start the SPI transfer.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                        <field>
+                            <name>RESET</name>
+                            <description>Reset the SPI0 interface.</description>
+                            <bitOffset>1</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>WRITE_DATA</name>
+                    <description>Write a byte of data to transmit on the SPI interface. Important: This will trigger the SPI transfer.</description>
+                    <addressOffset>0x04</addressOffset>
+                    <size>8</size>
+                    <access>write-only</access>
+                    <resetValue>0</resetValue>
+                    <fields>
+                        <field>
+                            <name>DATA</name>
+                            <description>Data to be transmitted on the SPI interface.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>READ_DATA</name>
+                    <description>Read a byte of data from the SPI interface.</description>
+                    <addressOffset>0x08</addressOffset>
+                    <size>8</size>
+                    <access>read-only</access>
+                    <resetValue>0</resetValue>
+                    <fields>
+                        <field>
+                            <name>DATA</name>
+                            <description>Data to be transmitted on the SPI interface.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>STATUS</name>
+                    <description>Read the status of the SPI interface.</description>
+                    <addressOffset>0x0C</addressOffset>
+                    <size>8</size>
+                    <access>read-only</access>
+                    <resetValue>0</resetValue>
+                    <fields>
+                        <field>
+                            <name>READY</name>
+                            <description>Indicates if the SPI interface has data ready to be read.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                        <field>
+                            <name>BUSY</name>
+                            <description>Indicates if the SPI interface is currently busy with a transfer.</description>
+                            <bitOffset>1</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>STATUS</name>
+                    <description>Read the status of the SPI interface.</description>
+                    <addressOffset>0x10</addressOffset>
+                    <size>16</size>
+                    <access>read-only</access>
+                    <resetValue>0</resetValue>
+                    <fields>
+                        <field>
+                            <name>DATA</name>
+                            <description>Data to be transmitted on the SPI interface.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                        <field>
+                            <name>READY</name>
+                            <description>Indicates if the SPI interface has data ready to be read.</description>
+                            <bitOffset>8</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                        <field>
+                            <name>BUSY</name>
+                            <description>Indicates if the SPI interface is currently busy with a transfer.</description>
+                            <bitOffset>9</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                    </fields>
+                </register>
+            </registers>
+        </peripheral>
+
         <!-- Peripherals > Display -->
         <peripheral>
-            <!-- Display Base Address is : 0x10000 + 0x800 (len: 0x400)-->
+            <!-- Display Base Address is : 0x10000 + 0x7x00 (len: 0x8400)-->
             <name>Display</name>
             <description>On-board Display interface, with hardware Framebuffer (128x128, RGB565).</description>
             <baseAddress>0x17c00</baseAddress>
@@ -240,5 +373,6 @@
                 </register>
             </registers>
         </peripheral>
+
     </peripherals>
 </device>

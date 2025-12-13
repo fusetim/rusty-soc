@@ -6,7 +6,7 @@ unit gpio_peripheral(
     input  uint8        mem_addr,
     input  uint32       mem_wr_data,
     input  uint4        mem_wr_en,
-    output! uint32       mem_rd_data(32b0),
+    output! uint32      mem_rd_data(32b0),
     // GPIO signals
     output uint8        leds(8h00),
     input  uint7        btns

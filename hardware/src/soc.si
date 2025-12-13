@@ -13,6 +13,8 @@ $include('../lib/silice/projects/ice-v/SOCs/ice-v-oled.si')
 
 // Includes the GPIO peripheral
 $include('./gpio.si')
+// Includes the SPI peripheral
+$include('./spi.si')
 // -- End of Includes -- //
 
 // Setup memory size
@@ -61,9 +63,9 @@ $$if VERILATOR then
     output uint10 spiscreen_height(128),
 $$end
 $$if SDCARD then
-    output  uint1  sd_clk,
-    output  uint1  sd_csn,
-    output  uint1  sd_mosi,
+    output!  uint1  sd_clk,
+    output!  uint1  sd_csn,
+    output!  uint1  sd_mosi,
     input   uint1  sd_miso,
 $$end
 ) {
@@ -119,6 +121,21 @@ $$end
         btns        <: btns
     );
 
+    // SPI Peripherals
+    uint1 spi0_en(0);
+    uint1 spi0_rst(0);
+    spi_peripheral spi0(
+        rclk       <: clock,
+        rst        <: spi0_rst,
+        //mem_addr   (prev_mem_addr[0,8]),
+        //mem_wr_data(prev_wdata),
+        //mem_wr_en  (prev_mem_rw),
+        //mem_rd_data(spi0.mem_rd_data),
+        spi_clk    :> sd_clk,
+        spi_mosi   :> sd_mosi,
+        spi_miso   <: sd_miso
+    );
+
     // -- End of Peripherals -- //
 
     // -- Internal SoC states -- //
@@ -134,15 +151,22 @@ $$end
         // Peripheral enable signals
         uint1 peripheral_en = prev_mem_addr[$periph_bit$,1];
         gpio_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000001); // GPIO at 0x10400 = 0b100000100000000
+        spi0_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000011); // SPI0 at 0x10C00 = 0b100001100000000
 
         // GPIO Peripheral memory-mapped I/O access
         gpio.mem_addr    = prev_mem_addr[0,8];
         gpio.mem_wr_data = prev_wdata;
         gpio.mem_wr_en   = prev_mem_rw;
 
+        // SPI0 Peripheral memory-mapped I/O access
+        spi0.mem_addr    = prev_mem_addr[0,8];
+        spi0.mem_wr_data = prev_wdata;
+        spi0.mem_wr_en   = prev_mem_rw;
+
         // Memory Interface
         memio.rdata =   (~peripheral_en ? ram.rdata : 32b0)
-                        | (peripheral_en & gpio_en ? gpio.mem_rd_data : 32b0);
+                        | (peripheral_en & gpio_en ? gpio.mem_rd_data : 32b0)
+                        | (peripheral_en & spi0_en ? spi0.mem_rd_data : 32b0);
         ram.wenable = memio.wenable & {4{~memio.addr[$periph_bit$,1]}};
         //                               ^^^^^^^ no write if on peripheral addresses
         ram.wdata        = memio.wdata;
@@ -152,8 +176,12 @@ $$end
         $$if SIMULATION then
             if (peripheral_en) {
                 if (gpio_en) {
-                    __display("[cycle %d] GPIO access: %b > %h",cycle,prev_mem_addr,prev_wdata);
-                } else {
+                    __display("[cycle %d] GPIO access: %b < %h",cycle,prev_mem_addr,prev_wdata);
+                }
+                if (spi0_en) {
+                    __display("[cycle %d] SPI0 access: %b < %h > <%h>",cycle,prev_mem_addr,prev_wdata,memio.rdata);
+                }
+                if (~gpio_en & ~spi0_en) {
                     __display("[cycle %d] Peripheral access to unknown address: %b",cycle,prev_mem_addr);
                 }
             }
@@ -169,3 +197,4 @@ $$end
         $$end
     }
 }
+
