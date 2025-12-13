@@ -7,87 +7,110 @@ module SpiMaster #(
     parameter CPHA = 0
 )
 (
-    // clk -- reference clock for communication with the SoC
-    input wire clk,
     // rst -- active high reset
     input wire rst,
-    // iclk -- internal module clock 
-    // SPI clock is derived from iclk (divided down at least by two)
-    input wire iclk,
+    // rclk -- Reference clock 
+    // SPI clock is derived from rclk (SPI_CLK = rclk / 2)
+    input wire rclk,
 
     // SPI interface
-    output reg spi_clk, // SPI clock
-    output reg spi_mosi, // SPI Master Out Slave In
+    output wire spi_clk, // SPI clock
+    output wire spi_mosi, // SPI Master Out Slave In
     input wire spi_miso,  // SPI Master In Slave Out
     // spi_cs -- chip select is not managed by this module, to allow multi-byte transfer.
 
     // SoC interface
-    // start - High for one clk cycle, it starts the transfer.
+    // start - High to trigger the transfer.
     //         At that point, tx_data must already be ready.
+    //         Note: This signal is only sampled on the rising edge of iclk.
+    //               If start is asserted when busy, it will be ignored until the
+    //               current transfer is complete.
     input wire start, 
     // tx_data - the byte to be sent
+    //           This signal must be valid when start is asserted.
+    //           Once busy is high, tx_data is no longer used by the current transfer.
+    //           Therefore, the next byte can be safely loaded for the next transfer.
     input wire [7:0] tx_data,
     // rx_data - the received byte from the slave
+    //           This signal is valid when ready is high.
     output reg [7:0] rx_data,
-    // completed - High as soon as the rx_data has been received.
-    //             Reset on start/rst rising edge
-    output reg completed
+    // ready - High as soon as the rx_data has been received.
+    //         Reset after a new transfer is started.
+    output reg ready,
+    // busy - High while a transfer is ongoing on the SPI bus.
+    output wire busy
 );
+    // Internal buffer
+    reg [7:0] tx_buffer;
 
-reg transfer = 0;
-reg enable_clk = 0;
-reg [3:0] bitcnt = 0;
-reg [7:0] tx_byte = 0;
+    // State encoding
+    localparam STATE_IDLE = 2'b00;
+    localparam STATE_TRANSFER_WRITE = 2'b10;
+    localparam STATE_TRANSFER_READ = 2'b11;
 
-reg send_clk = 1;
-reg recv_clk = 0;
+    // Internal state register
+    reg [1:0] state;
+    // Bit counter (number of bits already transferred)
+    reg [2:0] bit_cnt;
 
-always @(posedge clk) begin
-    if (rst) begin
-        completed <= 0;
-        rx_data <= 0;
-        spi_clk <= 0;
-        transfer <= 0;
-    end else begin 
-        if (start) begin
-            transfer <= 1;
-            bitcnt <= 0;
-            if (start & ~transfer) begin
-                tx_byte <= tx_data;
-                enable_clk <= 1;
-            end
-        end 
+    // State machine
+    always @(posedge rclk or posedge rst) begin
+        if (rst) begin
+            state <= STATE_IDLE;
+            bit_cnt <= 3'b0;
+            ready <= 1'b0;
+            rx_data <= 8'b0;
+            tx_buffer <= 8'b0;
+        end else begin
+            case (state)
+                STATE_IDLE: begin
+                    if (start) begin
+                        // Load the tx_buffer and start transfer
+                        tx_buffer <= tx_data;
+                        rx_data <= 8'b0;
+                        bit_cnt <= 3'b0;
+                        ready <= 1'b0;
+                        state <= (CPHA == 0) ? STATE_TRANSFER_WRITE : STATE_TRANSFER_READ;
+                    end
+                end
+                STATE_TRANSFER_WRITE: begin
+                    // Shift out data on MOSI
+                    state <= STATE_TRANSFER_READ;
+                    if (CPHA == 1) begin
+                        // Shift out next bit
+                        tx_buffer <= {tx_buffer[6:0], 1'b0};
+                    end
+                end
+                STATE_TRANSFER_READ: begin
+                    // Shift in data from MISO
+                    rx_data <= {rx_data[6:0], spi_miso};
+                    if (CPHA == 0) begin
+                        // Shift out next bit
+                        tx_buffer <= {tx_buffer[6:0], 1'b0};
+                    end
+                    bit_cnt <= bit_cnt + 1;
+                    if (bit_cnt == 3'b111) begin
+                        // All bits received, go back to idle
+                        state <= STATE_IDLE;
+                        ready <= 1'b1;
+                    end else begin
+                        // Continue transfer
+                        state <= STATE_TRANSFER_WRITE;
+                    end
+                end
+                default: begin
+                    state <= STATE_IDLE;
+                end
+            endcase
+        end
     end
-end
 
-always @(posedge iclk) begin 
-    if (rst) begin 
-        enable_clk <= 0;
-        send_clk <= 1;
-        recv_clk <= 0;
-        tx_byte <= 0;
-        spi_clk <= 0;
-    end else if (enable_clk) begin 
-        spi_clk <= ~spi_clk;
-        send_clk <= send_clk + 1;
-        recv_clk <= recv_clk + 1;
-    end else begin 
-        spi_clk <= 0;
-    end
-end
+    // SPI clock generation
+    assign spi_clk = rst ? CPOL : (state == STATE_TRANSFER_READ ? ~CPOL : CPOL);
+    // SPI MOSI output -- shift out the MSB first
+    assign spi_mosi = tx_buffer[7];
 
-always @(posedge send_clk) begin 
-    bitcnt <= bitcnt + 1;
-    tx_byte <= {1'b0, tx_byte[7:1]};
-end
-
-always @(posedge recv_clk) begin 
-    rx_data <= {rx_data[6:0], spi_miso};
-    if (bitcnt == 3'h6) begin
-        completed <= 1;
-    end
-end
-
-assign spi_mosi = tx_byte[0];
+    // External state signals
+    assign busy = state[1]; // busy when in transfer state
 
 endmodule

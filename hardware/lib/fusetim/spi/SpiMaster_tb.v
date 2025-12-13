@@ -3,7 +3,7 @@
 module SpiMaster_tb ();
     // Parameters
     parameter CLK_PERIOD = 20; // Clock period for clk
-    parameter ICLK_PERIOD = 5; // Clock period for iclk
+    parameter rclk_PERIOD = 5; // Clock period for rclk
     parameter CPOL = 0;
     parameter CPHA = 0;
     parameter CLK_DIVIDER = 4;
@@ -11,11 +11,12 @@ module SpiMaster_tb ();
     // Testbench signals
     reg clk;
     reg rst;
-    reg iclk;
+    reg rclk;
     reg start;
     reg [7:0] tx_data;
     wire [7:0] rx_data;
-    wire completed;
+    wire ready;
+    wire busy;
     wire spi_clk;
     wire spi_mosi;
     reg spi_miso;
@@ -25,16 +26,16 @@ module SpiMaster_tb ();
         .CPOL(CPOL),
         .CPHA(CPHA)
     ) dut (
-        .clk(clk),
         .rst(rst),
-        .iclk(iclk),
+        .rclk(rclk),
         .spi_clk(spi_clk),
         .spi_mosi(spi_mosi),
         .spi_miso(spi_miso),
         .start(start),
         .tx_data(tx_data),
         .rx_data(rx_data),
-        .completed(completed)
+        .busy(busy),
+        .ready(ready)
     );
 
     // Clock generation
@@ -43,8 +44,8 @@ module SpiMaster_tb ();
         forever #(CLK_PERIOD/2) clk = ~clk;
     end
     initial begin
-        iclk = 0;
-        forever #(ICLK_PERIOD/2) iclk = ~iclk;
+        rclk = 0;
+        forever #(rclk_PERIOD/2) rclk = ~rclk;
     end
 
     // Test sequence
@@ -70,11 +71,43 @@ module SpiMaster_tb ();
         #(CLK_PERIOD);
         start = 0;
 
-        // Wait for completion (8 bits = 8 SPI_clk cycles = 32 iclk cycles)
-        #(32*ICLK_PERIOD);
+        // Wait for completion (8 bits = 8 SPI_clk cycles = 32 rclk cycles)
+        #(32*rclk_PERIOD);
         
-        // Check received data (for this testbench, we can just print it)
-        $display("Received data: %h", rx_data);
+        // Check received data
+        $display("Received data: 0x%h (expect 0xff)", rx_data);
+        if(rx_data != 8'hFF) $display("Test failed: Received data does not match expected value.");
+        #(2*CLK_PERIOD);
+
+        // Test case 2: Send 0xAB and receive b10101010
+        tx_data = 8'hAB;
+        spi_miso = 1'b0;
+        #(CLK_PERIOD);
+        start = 1;
+
+        wait (spi_clk == CPHA);
+        spi_miso = 1'b1;
+        wait (spi_clk != CPHA); wait (spi_clk == CPHA);
+        spi_miso = 1'b0;
+        wait (spi_clk != CPHA); wait (spi_clk == CPHA);
+        spi_miso = 1'b1;
+        start = 0;
+        wait (spi_clk != CPHA); wait (spi_clk == CPHA);
+        spi_miso = 1'b0;
+        wait (spi_clk != CPHA); wait (spi_clk == CPHA);
+        spi_miso = 1'b1;
+        wait (spi_clk != CPHA); wait (spi_clk == CPHA);
+        spi_miso = 1'b0;
+        wait (spi_clk != CPHA); wait (spi_clk == CPHA);        
+        spi_miso = 1'b1;
+        wait (spi_clk != CPHA); wait (spi_clk == CPHA);        
+        spi_miso = 1'b0;
+        wait (ready == 1'b1);
+
+        // Check received data
+        $display("Received data: 0x%h (expect 0xaa)", rx_data);
+        if(rx_data != 8'hAA) $display("Test failed: Received data does not match expected value.");
+
         #(2*CLK_PERIOD);
         $dumpoff();
         $finish;
