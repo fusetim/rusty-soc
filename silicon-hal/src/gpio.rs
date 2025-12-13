@@ -1,18 +1,23 @@
-use core::{convert::Infallible, marker::PhantomData};
 use paste::paste;
 
-use crate::{
-    gpio::{btn_bank::BtnBank, led_bank::LedBank},
-    pac,
-    typesafe::Sealed,
-};
+use crate::typesafe::Sealed;
 use embedded_hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin};
 
-pub trait BankId: Sealed {}
-
 pub trait BankPinIds: Sealed {
-    type Bank: BankId;
     const BANK_ID: u8;
+}
+
+pub trait OutputCapablePin: BankPinIds + ErrorType {
+    fn set_high(&mut self) -> Result<(), Self::Error>;
+    fn set_low(&mut self) -> Result<(), Self::Error>;
+}
+pub trait InputCapablePin: BankPinIds + ErrorType {
+    fn is_high(&self) -> Result<bool, Self::Error>;
+    fn is_low(&self) -> Result<bool, Self::Error>;
+}
+pub trait StatefulOutputCapablePin: OutputCapablePin {
+    fn is_set_high(&self) -> Result<bool, Self::Error>;
+    fn is_set_low(&self) -> Result<bool, Self::Error>;
 }
 
 pub trait IntoPin<I>
@@ -24,13 +29,14 @@ where
 
 pub mod led_bank {
     use crate::{
-        gpio::{BankId, BankPinIds, IntoPin, Pin},
+        gpio::{BankPinIds, IntoPin, OutputCapablePin, Pin, StatefulOutputCapablePin},
+        pac,
         typesafe::Sealed,
     };
+    use core::convert::Infallible;
+    use embedded_hal::digital::ErrorType;
 
-    pub struct LedBank {}
-    impl Sealed for LedBank {}
-    impl BankId for LedBank {}
+    pub trait LedBankPin: Sealed + OutputCapablePin + StatefulOutputCapablePin {}
 
     macro_rules! define_led_pins {
         ($($pin_name:ident => $pin_id:expr),* $(,)?) => {
@@ -41,9 +47,54 @@ pub mod led_bank {
 
                 impl Sealed for $pin_name {}
                 impl BankPinIds for $pin_name {
-                    type Bank = LedBank;
                     const BANK_ID: u8 = $pin_id;
                 }
+                impl ErrorType for $pin_name {
+                    type Error = Infallible;
+                }
+                impl OutputCapablePin for $pin_name {
+                    #[inline(always)]
+                    fn set_high(&mut self) -> Result<(), Self::Error> {
+                        // Safety: Volatile write, outside the PIN output, it has no other effect
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        unsafe {
+                            gpio.led().write_with_zero(|w| {
+                                w.led_mask(Self::BANK_ID)
+                                    .set_bit()
+                                    .led_output(Self::BANK_ID)
+                                    .set_bit()
+                            });
+                        }
+                        Ok(())
+                    }
+                    #[inline(always)]
+                    fn set_low(&mut self) -> Result<(), Self::Error> {
+                        // Safety: Volatile write, outside the PIN output, it has no other effect
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        unsafe {
+                            gpio.led().write_with_zero(|w| {
+                                w.led_mask(Self::BANK_ID)
+                                    .set_bit()
+                                    .led_output(Self::BANK_ID)
+                                    .clear_bit()
+                            });
+                        }
+                        Ok(())
+                    }
+                }
+                impl StatefulOutputCapablePin for $pin_name {
+                    #[inline(always)]
+                    fn is_set_high(&self) -> Result<bool, Self::Error> {
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        Ok(gpio.led().read().led_output(Self::BANK_ID).bit_is_set())
+                    }
+                    #[inline(always)]
+                    fn is_set_low(&self) -> Result<bool, Self::Error> {
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        Ok(gpio.led().read().led_output(Self::BANK_ID).bit_is_clear())
+                    }
+                }
+                impl LedBankPin for $pin_name {}
 
                 impl IntoPin<$pin_name> for $pin_name {
                     #[inline(always)]
@@ -69,14 +120,14 @@ pub mod led_bank {
 
 pub mod btn_bank {
     use crate::{
-        gpio::{BankId, BankPinIds, IntoPin, Pin},
+        gpio::{BankPinIds, InputCapablePin, IntoPin, Pin},
+        pac,
         typesafe::Sealed,
     };
+    use core::convert::Infallible;
+    use embedded_hal::digital::ErrorType;
 
-    pub struct BtnBank {}
-
-    impl Sealed for BtnBank {}
-    impl BankId for BtnBank {}
+    pub trait BtnBankPin: Sealed + InputCapablePin {}
 
     macro_rules! define_btn_pins {
         ($($pin_name:ident => $pin_id:expr),* $(,)?) => {
@@ -87,9 +138,27 @@ pub mod btn_bank {
 
                 impl Sealed for $pin_name {}
                 impl BankPinIds for $pin_name {
-                    type Bank = BtnBank;
                     const BANK_ID: u8 = $pin_id;
                 }
+                impl InputCapablePin for $pin_name {
+                    #[inline(always)]
+                    fn is_high(&self) -> Result<bool, Self::Error> {
+                        // Safety: Read-only, have no other effect
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        Ok(gpio.btn().read().btn_input(Self::BANK_ID).bit_is_set())
+                    }
+
+                    #[inline(always)]
+                    fn is_low(&self) -> Result<bool, Self::Error> {
+                        // Safety: Read-only, have no other effect
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        Ok(gpio.btn().read().btn_input(Self::BANK_ID).bit_is_clear())
+                    }
+                }
+                impl ErrorType for $pin_name {
+                    type Error = Infallible;
+                }
+                impl BtnBankPin for $pin_name {}
 
                 impl IntoPin<$pin_name> for $pin_name {
                     #[inline(always)]
@@ -111,108 +180,165 @@ pub mod btn_bank {
     }
 }
 
+pub mod spi_cs_bank {
+    use crate::{
+        gpio::{BankPinIds, IntoPin, OutputCapablePin, Pin, StatefulOutputCapablePin},
+        pac,
+        typesafe::Sealed,
+    };
+    use core::convert::Infallible;
+    use embedded_hal::digital::ErrorType;
+
+    pub trait SpiCsBankPin: Sealed + OutputCapablePin + StatefulOutputCapablePin {}
+
+    macro_rules! define_spi_cs_pins {
+        ($($pin_name:ident => $pin_id:expr),* $(,)?) => {
+            $(
+                pub struct $pin_name {
+                    pub(crate) _inner: (),
+                }
+
+                impl Sealed for $pin_name {}
+                impl BankPinIds for $pin_name {
+                    const BANK_ID: u8 = $pin_id;
+                }
+                impl ErrorType for $pin_name {
+                    type Error = Infallible;
+                }
+                impl OutputCapablePin for $pin_name {
+                    #[inline(always)]
+                    fn set_high(&mut self) -> Result<(), Self::Error> {
+                        // Safety: Volatile write, outside the PIN output, it has no other effect
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        unsafe {
+                            gpio.spi_cs().write_with_zero(|w| {
+                                w.cs_mask(Self::BANK_ID)
+                                    .set_bit()
+                                    .cs_output(Self::BANK_ID)
+                                    .set_bit()
+                            });
+                        }
+                        Ok(())
+                    }
+                    #[inline(always)]
+                    fn set_low(&mut self) -> Result<(), Self::Error> {
+                        // Safety: Volatile write, outside the PIN output, it has no other effect
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        unsafe {
+                            gpio.spi_cs().write_with_zero(|w| {
+                                w.cs_mask(Self::BANK_ID)
+                                    .set_bit()
+                                    .cs_output(Self::BANK_ID)
+                                    .clear_bit()
+                            });
+                        }
+                        Ok(())
+                    }
+                }
+                impl StatefulOutputCapablePin for $pin_name {
+                    #[inline(always)]
+                    fn is_set_high(&self) -> Result<bool, Self::Error> {
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        Ok(gpio.spi_cs().read().cs_output(Self::BANK_ID).bit_is_set())
+                    }
+                    #[inline(always)]
+                    fn is_set_low(&self) -> Result<bool, Self::Error> {
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        Ok(gpio.spi_cs().read().cs_output(Self::BANK_ID).bit_is_clear())
+                    }
+                }
+                impl SpiCsBankPin for $pin_name {}
+
+                impl IntoPin<$pin_name> for $pin_name {
+                    #[inline(always)]
+                    fn into_pin(self) -> Pin<$pin_name> {
+                        Pin::new_output(self)
+                    }
+                }
+            )*
+        };
+    }
+
+    define_spi_cs_pins! {
+        SpiCsSd => 0,
+        SpiCsOled => 1,
+    }
+}
+
 pub struct Pin<I>
 where
     I: BankPinIds,
 {
-    _pin: PhantomData<I>,
+    pin: I,
 }
 
 impl<I> Pin<I>
 where
-    I: BankPinIds<Bank = LedBank>,
+    I: OutputCapablePin,
 {
-    pub fn new_output(_pin: I) -> Self {
-        Self { _pin: PhantomData }
+    pub fn new_output(pin: I) -> Self {
+        Self { pin }
     }
 }
 
 impl<I> Pin<I>
 where
-    I: BankPinIds<Bank = BtnBank>,
+    I: InputCapablePin,
 {
-    pub fn new_input(_pin: I) -> Self {
-        Self { _pin: PhantomData }
+    pub fn new_input(pin: I) -> Self {
+        Self { pin }
     }
 }
 
 impl<I> ErrorType for Pin<I>
 where
-    I: BankPinIds,
+    I: BankPinIds + ErrorType,
 {
-    type Error = Infallible;
+    type Error = I::Error;
 }
 
 impl<I> InputPin for Pin<I>
 where
-    I: BankPinIds<Bank = BtnBank>,
+    I: InputCapablePin,
 {
     #[inline(always)]
     fn is_high(&mut self) -> Result<bool, Self::Error> {
-        // Safety: Read-only, have no other effect
-        let gpio = unsafe { pac::Gpio::steal() };
-        Ok(gpio.btn().read().btn_input(I::BANK_ID).bit_is_set())
+        return self.pin.is_high();
     }
 
     #[inline(always)]
     fn is_low(&mut self) -> Result<bool, Self::Error> {
-        // Safety: Read-only, have no other effect
-        let gpio = unsafe { pac::Gpio::steal() };
-        Ok(gpio.btn().read().btn_input(I::BANK_ID).bit_is_clear())
+        return self.pin.is_low();
     }
 }
 
 impl<I> OutputPin for Pin<I>
 where
-    I: BankPinIds<Bank = LedBank>,
+    I: OutputCapablePin,
 {
     #[inline(always)]
     fn set_low(&mut self) -> Result<(), Self::Error> {
-        // Safety: Volatile write, outside the PIN output, it has no other effect
-        let gpio = unsafe { pac::Gpio::steal() };
-        unsafe {
-            gpio.led().write_with_zero(|w| {
-                w.led_mask(I::BANK_ID)
-                    .set_bit()
-                    .led_output(I::BANK_ID)
-                    .clear_bit()
-            });
-        }
-        Ok(())
+        return self.pin.set_low();
     }
 
     #[inline(always)]
     fn set_high(&mut self) -> Result<(), Self::Error> {
-        // Safety: Volatile write, outside the PIN output, it has no other effect
-        let gpio = unsafe { pac::Gpio::steal() };
-        unsafe {
-            gpio.led().write_with_zero(|w| {
-                w.led_mask(I::BANK_ID)
-                    .set_bit()
-                    .led_output(I::BANK_ID)
-                    .set_bit()
-            });
-        }
-        Ok(())
+        return self.pin.set_high();
     }
 }
 
 impl<I> StatefulOutputPin for Pin<I>
 where
-    I: BankPinIds<Bank = LedBank>,
+    I: StatefulOutputCapablePin,
 {
     #[inline(always)]
     fn is_set_high(&mut self) -> Result<bool, Self::Error> {
-        // Safety: Read-only, have no other effect
-        let gpio = unsafe { pac::Gpio::steal() };
-        Ok(gpio.led().read().led_output(I::BANK_ID).bit_is_set())
+        return self.pin.is_set_high();
     }
 
     #[inline(always)]
     fn is_set_low(&mut self) -> Result<bool, Self::Error> {
-        // Safety: Read-only, have no other effect
-        let gpio = unsafe { pac::Gpio::steal() };
-        Ok(gpio.led().read().led_output(I::BANK_ID).bit_is_clear())
+        return self.pin.is_set_low();
     }
 }
 
@@ -231,6 +357,8 @@ pub struct Gpio {
     btn4: Option<btn_bank::Btn4>,
     btn5: Option<btn_bank::Btn5>,
     btn6: Option<btn_bank::Btn6>,
+    sd_cs: Option<spi_cs_bank::SpiCsSd>,
+    oled_cs: Option<spi_cs_bank::SpiCsOled>,
 }
 
 impl Gpio {
@@ -250,6 +378,8 @@ impl Gpio {
             btn4: Some(btn_bank::Btn4 { _inner: () }),
             btn5: Some(btn_bank::Btn5 { _inner: () }),
             btn6: Some(btn_bank::Btn6 { _inner: () }),
+            sd_cs: Some(spi_cs_bank::SpiCsSd { _inner: () }),
+            oled_cs: Some(spi_cs_bank::SpiCsOled { _inner: () }),
         }
     }
 }
@@ -289,6 +419,16 @@ gpio_take_led! {0,1,2,3,4,5,6,7}
 gpio_take_btn! {1,2,3,4,5,6}
 
 impl Gpio {
+    #[inline(always)]
+    pub fn take_sd_cs(&mut self) -> Option<spi_cs_bank::SpiCsSd> {
+        self.sd_cs.take()
+    }
+
+    #[inline(always)]
+    pub fn take_oled_cs(&mut self) -> Option<spi_cs_bank::SpiCsOled> {
+        self.oled_cs.take()
+    }
+
     #[inline(always)]
     pub fn take_all_btns(
         &mut self,

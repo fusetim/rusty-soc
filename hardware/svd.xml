@@ -89,12 +89,12 @@
             <groupName>GPIO</groupName>
             <addressBlock>
                 <offset>0x0</offset>
-                <size>0x08</size>
+                <size>0x0C</size>
                 <usage>registers</usage>
             </addressBlock>
             <addressBlock>
-                <offset>0x08</offset>
-                <size>0x3f7</size>
+                <offset>0x0C</offset>
+                <size>0x3f3</size>
                 <usage>reserved</usage>
             </addressBlock>
             <registers>
@@ -142,6 +142,34 @@
                             <bitOffset>0</bitOffset>
                             <bitWidth>1</bitWidth>
                             <access>read-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>SPI_CS</name>
+                    <description>Control of the output of the on-board SPI chip selects.</description>
+                    <addressOffset>0x08</addressOffset>
+                    <size>16</size>
+                    <access>read-write</access>
+                    <resetValue>0x0000</resetValue>
+                    <fields>
+                        <field>
+                            <dim>8</dim>
+                            <dimIncrement>1</dimIncrement>
+                            <name>CS_OUTPUT%s</name>
+                            <description>Set output of the %sth SPI CS</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                        <field>
+                            <dim>8</dim>
+                            <dimIncrement>1</dimIncrement>
+                            <name>CS_MASK%s</name>
+                            <description>Mask/unmask the output for %sth SPI CS. It must be HIGH if you expect CS_OUTPUT%s to have an effect.</description>
+                            <bitOffset>8</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
                         </field>
                     </fields>
                 </register>
@@ -292,8 +320,8 @@
                     </fields>
                 </register>
                 <register>
-                    <name>STATUS</name>
-                    <description>Read the status of the SPI interface.</description>
+                    <name>READ_AND_STATUS</name>
+                    <description>Read the data received and the status of the SPI interface.</description>
                     <addressOffset>0x10</addressOffset>
                     <size>16</size>
                     <access>read-only</access>

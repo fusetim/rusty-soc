@@ -29,7 +29,13 @@ module SpiMasterPeripheral #(
     input wire [7:0] mem_addr,
     input wire [3:0] mem_wr_en,
     input wire [31:0] mem_wr_data,
-    output wire [31:0] mem_rd_data
+    output wire [31:0] mem_rd_data,
+
+    // Debug interface
+    output wire debug_busy,
+    output wire debug_ready,
+    output reg [7:0] debug_tx,
+    output reg [7:0] debug_rx
 );
     // -- Peripheral registers --
     // REG_CONTROL: Control register
@@ -95,15 +101,29 @@ module SpiMasterPeripheral #(
             if (|mem_wr_en) begin
                 start <=    (mem_addr_ext == REG_CONTROL && mem_wr_en[0] && mem_wr_data[0]) ? 1'b1 : // CONTROL - start bit
                             (mem_addr_ext == REG_WRITE_DATA && mem_wr_en[0]) ? 1'b1 : // WRITE_DATA - start transfer on write
-                            1'b0;
+                            start; // retain previous value
                 soft_reset <= (mem_addr_ext == REG_CONTROL && mem_wr_en[0] && mem_wr_data[1]) ? 1'b1 : 1'b0; // CONTROL - reset bit
                 if (mem_addr_ext == REG_WRITE_DATA && mem_wr_en[0]) begin
                     tx_data <= mem_wr_data[7:0];
                 end
-            end else begin
-                start <= 1'b0; // Clear start after one cycle
-                soft_reset <= 1'b0; // Clear soft reset after one cycle
-            end
+            end 
+        end
+    end
+
+    always @(posedge rclk) begin
+        if (soft_reset) begin
+            // Handle soft reset of the SPI master
+            // (Assuming SpiMaster module has a soft reset input, not shown here)
+            // This is a placeholder; actual implementation may vary.
+            soft_reset <= 1'b0;
+        end
+        if (start) begin 
+            // Start signal is only sampled on rclk rising edge
+            start <= 1'b0; // Clear start after sampling
+            debug_tx <= tx_data;
+        end
+        if (ready) begin
+            debug_rx <= rx_data;
         end
     end
 
@@ -115,4 +135,7 @@ module SpiMasterPeripheral #(
                          (mem_addr_ext == REG_READ_AND_STATUS) ? {22'b0, busy, ready, rx_data} :
                          32'b0; // Default case
 
+    // Debug outputs
+    assign debug_busy = busy;
+    assign debug_ready = ready;
 endmodule

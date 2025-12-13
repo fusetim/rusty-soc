@@ -55,7 +55,7 @@ $$end
     output uint1 oled_mosi,
     output uint1 oled_dc,
     output uint1 oled_resn,
-    output uint1 oled_csn(0),
+    output! uint1 oled_csn(0),
 $$if VERILATOR then
     // configuration for SPIscreen simulation
     output uint2  spiscreen_driver(1/*SSD1351*/),
@@ -64,7 +64,7 @@ $$if VERILATOR then
 $$end
 $$if SDCARD then
     output!  uint1  sd_clk,
-    output!  uint1  sd_csn,
+    output!  uint1  sd_csn(1),
     output!  uint1  sd_mosi,
     input   uint1  sd_miso,
 $$end
@@ -118,14 +118,22 @@ $$end
         // mem_rd_data :> memio.rdata,
         // GPIO signals
         leds        :> leds,
-        btns        <: btns
+        btns        <: btns,
+        sd_cs       :> sd_csn,
+        oled_cs     :> oled_csn
     );
 
     // SPI Peripherals
     uint1 spi0_en(0);
     uint1 spi0_rst(0);
+    uint1 spi0_rclk(0);
+    uint8 spi0_clk_cntr(0);
+    $$if SIMULATION then
+    uint1 spi0_busy(0);
+    uint1 spi0_ready(0);
+    $$end
     spi_peripheral spi0(
-        rclk       <: clock,
+        rclk       <: spi0_rclk,
         rst        <: spi0_rst,
         //mem_addr   (prev_mem_addr[0,8]),
         //mem_wr_data(prev_wdata),
@@ -133,7 +141,11 @@ $$end
         //mem_rd_data(spi0.mem_rd_data),
         spi_clk    :> sd_clk,
         spi_mosi   :> sd_mosi,
-        spi_miso   <: sd_miso
+        spi_miso   <: sd_miso,
+        $$if SIMULATION then
+            debug_busy :> spi0_busy,
+            debug_ready :> spi0_ready,
+        $$end
     );
 
     // -- End of Peripherals -- //
@@ -148,6 +160,19 @@ $$end
 
 
     always { 
+        // SPI rclk generation (for SPI0 peripheral)
+        // Generate a clock at ~400kHz from the main clock (assumed 25MHz)
+        spi0_clk_cntr = spi0_clk_cntr + 1;
+        if (spi0_clk_cntr == 63) { // 25MHz / 64 = 390.625kHz
+            spi0_clk_cntr = 0;
+            spi0_rclk     = ~spi0_rclk;
+            $$if SIMULATION then
+                //if (spi0_busy) {
+                //    __display("[cycle %d] SPI0 RCLK=%b BUSY=%b READY=%b, SPI_CLK=%b, MOSI=%b, MISO=%b", cycle, spi0_rclk, spi0_busy, spi0_ready, sd_clk, sd_mosi, sd_miso);
+                //}
+            $$end
+        }
+
         // Peripheral enable signals
         uint1 peripheral_en = prev_mem_addr[$periph_bit$,1];
         gpio_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000001); // GPIO at 0x10400 = 0b100000100000000
@@ -176,10 +201,10 @@ $$end
         $$if SIMULATION then
             if (peripheral_en) {
                 if (gpio_en) {
-                    __display("[cycle %d] GPIO access: %b < %h",cycle,prev_mem_addr,prev_wdata);
+                    __display("[cycle %d] GPIO access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
                 }
                 if (spi0_en) {
-                    __display("[cycle %d] SPI0 access: %b < %h > <%h>",cycle,prev_mem_addr,prev_wdata,memio.rdata);
+                    __display("[cycle %d] SPI0 access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
                 }
                 if (~gpio_en & ~spi0_en) {
                     __display("[cycle %d] Peripheral access to unknown address: %b",cycle,prev_mem_addr);

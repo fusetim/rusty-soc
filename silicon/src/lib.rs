@@ -1,9 +1,14 @@
 #![no_std]
 #![no_main]
-use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
+use embedded_hal::delay;
+use embedded_hal::digital::{InputPin, OutputPin, PinState, StatefulOutputPin};
+use embedded_hal::spi::{SpiBus, SpiDevice};
+use embedded_hal_bus::spi::ExclusiveDevice;
+use embedded_sdmmc::SdCard;
 use silicon_hal::{
     delay::{DelayNs, INTR_DELAY},
     gpio::IntoPin as _,
+    spi::Spi,
 };
 
 #[panic_handler]
@@ -29,65 +34,77 @@ fn main() -> ! {
             led7.into_pin(),
         )
     };
-    let (mut btn1, mut btn2, mut btn3, mut btn4, mut btn5, mut btn6) = {
-        let (btn1, btn2, btn3, btn4, btn5, btn6) = peripherals.gpio.take_all_btns().unwrap();
-        (
-            btn1.into_pin(),
-            btn2.into_pin(),
-            btn3.into_pin(),
-            btn4.into_pin(),
-            btn5.into_pin(),
-            btn6.into_pin(),
-        )
-    };
+    let mut sd_cs = peripherals.gpio.take_sd_cs().unwrap().into_pin();
+    let spi0 = Spi::new(peripherals.spi0);
 
-    let mut count: u8 = 0;
+    sd_cs.set_high();
+    delay_ms(250);
+    let spi_sd = ExclusiveDevice::new(spi0, sd_cs, INTR_DELAY).unwrap();
+
+    let mut sdcard = SdCard::new(spi_sd, INTR_DELAY);
+
     loop {
-        // Read buttons and set corresponding LEDs
-        if btn1.is_high().unwrap() {
-            led1.set_high().unwrap();
-        } else {
-            led1.set_low().unwrap();
-        }
-        if btn2.is_high().unwrap() {
-            led2.set_high().unwrap();
-        } else {
-            led2.set_low().unwrap();
-        }
-        if btn3.is_high().unwrap() {
-            led3.set_high().unwrap();
-        } else {
-            led3.set_low().unwrap();
-        }
-        if btn4.is_high().unwrap() {
-            led4.set_high().unwrap();
-        } else {
-            led4.set_low().unwrap();
-        }
-        if btn5.is_high().unwrap() {
-            led5.set_high().unwrap();
-        } else {
-            led5.set_low().unwrap();
-        }
-        if btn6.is_high().unwrap() {
-            led6.set_high().unwrap();
-        } else {
-            led6.set_low().unwrap();
+        // Toggle LEDs to indicate activity
+        led0.set_high();
+        delay_ms(1000);
+        led0.set_low();
+        led1.set_low();
+        led2.set_low();
+        led3.set_low();
+        led4.set_low();
+        led5.set_low();
+        led6.set_low();
+        led7.set_low();
+        delay_ms(1000);
+
+        // Read the SD card capacity
+        match sdcard.num_bytes() {
+            Ok(cap) => {
+                led1.set_state(to_pin_state(cap > 0));
+                led2.set_state(to_pin_state(cap > 1_000_000));
+                led3.set_state(to_pin_state(cap > 10_000_000));
+                led4.set_state(to_pin_state(cap > 100_000_000));
+                led5.set_state(to_pin_state(cap > 1_000_000_000));
+                led6.set_state(to_pin_state(cap > 10_000_000_000));
+                led7.set_low();
+            }
+            Err(err) => {
+                match err {
+                    embedded_sdmmc::SdCardError::RegisterReadError => {
+                        led1.set_high();
+                    }
+                    embedded_sdmmc::SdCardError::CrcError(_,_) => {
+                        led2.set_high();
+                    }
+                    embedded_sdmmc::SdCardError::ReadError => {
+                        led3.set_high();
+                    }
+                    embedded_sdmmc::SdCardError::WriteError => {
+                        led4.set_high();
+                    }
+                    embedded_sdmmc::SdCardError::BadState => {
+                        led5.set_high();
+                    }
+                    embedded_sdmmc::SdCardError::CardNotFound => {
+                        led6.set_high();
+                    }
+                    embedded_sdmmc::SdCardError::GpioError => {
+                        led7.set_high();
+                    }
+                    _ => {
+                    }
+                }
+            }
         }
 
-        // Toggle led0/led7 every 8 cycles
-        if count % 8 == 0 {
-            led0.toggle().unwrap();
-        } else if count % 8 == 4 {
-            led7.toggle().unwrap();
-        }
-
-        // Simple delay
-        delay_ms(125);
-
-        // Increment count (not used for now)
-        count = count.wrapping_add(1);
+        // Toggle LEDs to indicate activity
+        led0.set_high();
+        delay_ms(1000);
     }
+}
+
+pub fn to_pin_state(state: bool) -> PinState {
+    if state { PinState::High } else { PinState::Low }
 }
 
 #[inline(always)]

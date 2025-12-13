@@ -22,7 +22,7 @@ module SpiMaster #(
     // SoC interface
     // start - High to trigger the transfer.
     //         At that point, tx_data must already be ready.
-    //         Note: This signal is only sampled on the rising edge of iclk.
+    //         Note: This signal is only sampled on the rising edge of rclk.
     //               If start is asserted when busy, it will be ignored until the
     //               current transfer is complete.
     input wire start, 

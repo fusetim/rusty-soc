@@ -9,20 +9,25 @@ unit gpio_peripheral(
     output! uint32      mem_rd_data(32b0),
     // GPIO signals
     output uint8        leds(8h00),
-    input  uint7        btns
+    input  uint7        btns,
+    output! uint1        sd_cs(1b0), // SD card SPI chip select
+    output! uint1        oled_cs(1b0) // OLED SPI chip select
 ) {
     // Register addresses (word-aligned)
     uint10 REG_LED_RW(10h00); // LED Read/Write
     uint10 REG_BTN_R(10h04); // Button Read-only
+    uint10 REG_SPI_CS_RW(10h08); // SPI Chip Select Write
 
     always {
         uint10 mem_addr_ext = {mem_addr, 2b00}; // Extend to word-aligned address
         uint1 leds_access            = (mem_addr_ext == REG_LED_RW); 
         uint1 button_access          = (mem_addr_ext == REG_BTN_R);
+        uint1 spi_cs_access          = (mem_addr_ext == REG_SPI_CS_RW);
 
         // Handle read from GPIO peripheral
         mem_rd_data = (mem_en & leds_access) ? {24b0, leds} :
                       (mem_en & button_access) ? {25b0, btns} :
+                      (mem_en & spi_cs_access) ? {30b0, sd_cs, oled_cs} :
                       32b0;
 
         // Handle write to GPIO peripheral
@@ -30,7 +35,12 @@ unit gpio_peripheral(
             // Update LEDs
             uint8 led_mask = leds_access ? mem_wr_data[8,8] : 8h00;
             leds           = (leds & ~led_mask) | (mem_wr_data[0,8] & led_mask);
-            
+
+            // Update SPI chip selects
+            uint8 spi_cs_mask = spi_cs_access ? mem_wr_data[8,2] : 2b00;
+            sd_cs          = spi_cs_mask[0,1] ? mem_wr_data[0,1] : sd_cs;
+            oled_cs        = spi_cs_mask[1,1] ? mem_wr_data[1,1] : oled_cs;
+
             // BTN - read-only, no write operation
         }
         if (rst) {
@@ -44,6 +54,11 @@ unit gpio_peripheral(
             }
             if (mem_en & button_access) {
                 __display("Buttons read: %b",btns);
+            }
+            if (mem_en & spi_cs_access) {
+                __display("SPI CS: SD_CS=(m:%b, s:%b), OLED_CS=(m:%b, s:%b)",
+                    spi_cs_access[0,1], mem_wr_data[0,1],
+                    spi_cs_access[1,1], mem_wr_data[1,1]);
             }
         $$end
     }
