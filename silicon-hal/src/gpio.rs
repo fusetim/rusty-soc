@@ -362,9 +362,7 @@ pub mod spi_sdcard_bank {
 
 pub mod spi_oled_bank {
     use crate::{
-        gpio::{
-            BankPinIds, InputCapablePin, IntoPin, OutputCapablePin, Pin, StatefulOutputCapablePin,
-        },
+        gpio::{BankPinIds, IntoPin, OutputCapablePin, Pin, StatefulOutputCapablePin},
         pac,
         typesafe::Sealed,
     };
@@ -399,7 +397,7 @@ pub mod spi_oled_bank {
                     fn set_high(&mut self) -> Result<(), Self::Error> {
                         let gpio = unsafe { pac::Gpio::steal() };
                         unsafe {
-                            gpio.spi_sdcard().write_with_zero(|w| {
+                            gpio.spi_oled().write_with_zero(|w| {
                                 w.$pin_mask()
                                     .set_bit()
                                     .$pin_output()
@@ -412,7 +410,7 @@ pub mod spi_oled_bank {
                     fn set_low(&mut self) -> Result<(), Self::Error> {
                         let gpio = unsafe { pac::Gpio::steal() };
                         unsafe {
-                            gpio.spi_sdcard().write_with_zero(|w| {
+                            gpio.spi_oled().write_with_zero(|w| {
                                 w.$pin_mask()
                                     .set_bit()
                                     .$pin_output()
@@ -427,16 +425,16 @@ pub mod spi_oled_bank {
                     #[inline(always)]
                     fn is_set_high(&self) -> Result<bool, Self::Error> {
                         let gpio = unsafe { pac::Gpio::steal() };
-                        Ok(gpio.spi_sdcard().read().$pin_output().bit_is_set())
+                        Ok(gpio.spi_oled().read().$pin_output().bit_is_set())
                     }
                     #[inline(always)]
                     fn is_set_low(&self) -> Result<bool, Self::Error> {
                         let gpio = unsafe { pac::Gpio::steal() };
-                        Ok(gpio.spi_sdcard().read().$pin_output().bit_is_clear())
+                        Ok(gpio.spi_oled().read().$pin_output().bit_is_clear())
                     }
                 }
 
-                impl SpiSdcardOutputBankPin for $pin_name {}
+                impl SpiOledBankPin for $pin_name {}
 
                 impl IntoPin<$pin_name> for $pin_name {
                     #[inline(always)]
@@ -461,7 +459,7 @@ pub mod spi_oled_bank {
         (SpiOledMosi, 1, mosi_mask, mosi_output),
         (SpiOledClk, 2, clk_mask, clk_output),
         (SpiOledDc, 3, dc_mask, dc_output),
-        (SpiOledRes, 4, res_mask, res_output),
+        (SpiOledRes, 4, reset_mask, reset_output),
     }
 }
 
@@ -470,6 +468,15 @@ where
     I: BankPinIds,
 {
     pin: I,
+}
+
+impl<I> Pin<I>
+where
+    I: BankPinIds,
+{
+    pub fn bring_down(self) -> I {
+        self.pin
+    }
 }
 
 impl<I> Pin<I>

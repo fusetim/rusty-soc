@@ -1,25 +1,35 @@
-//! Display module 
-//! 
-//! This module provides abstractions and utilities for managing 
+//! Display module
+//!
+//! This module provides abstractions and utilities for managing
 //! the onboard OLED SDD1351 display.
 
-use embedded_hal::{delay, digital::PinState};
+use embedded_hal::digital::{OutputPin as _, PinState};
 
-use crate::{gpio::{OledPins, SpiOledPins, never_bank::NeverPin, spi_oled_bank::{SpiOledClk, SpiOledCs, SpiOledDc, SpiOledMosi, SpiOledRes}}, spi::SpiSoft};
+use crate::{
+    gpio::{
+        IntoPin, OledPins, Pin, SpiOledPins,
+        never_bank::NeverPin,
+        spi_oled_bank::{SpiOledClk, SpiOledCs, SpiOledDc, SpiOledMosi, SpiOledRes},
+    },
+    spi::SpiSoft,
+};
 
-#[derive(Debug)]
 pub struct DisplayPeripheral<DELAYER>
-where DELAYER: crate::delay::DelayNs + Clone, {
+where
+    DELAYER: crate::delay::DelayNs + Clone,
+{
     initialized: bool,
     spi: SpiSoft<SpiOledClk, SpiOledMosi, NeverPin, DELAYER>,
-    dc: SpiOledDc,
-    res: SpiOledRes,
-    cs: SpiOledCs,
+    dc: Pin<SpiOledDc>,
+    res: Pin<SpiOledRes>,
+    cs: Pin<SpiOledCs>,
     delay: DELAYER,
 }
 
 impl<DELAYER> DisplayPeripheral<DELAYER>
-where DELAYER: crate::delay::DelayNs + Clone, {
+where
+    DELAYER: crate::delay::DelayNs + Clone,
+{
     pub fn new(oled_pins: OledPins, delay: DELAYER) -> Self {
         let (cs, mosi, clk, dc, res) = oled_pins;
         let spi = SpiSoft::new(
@@ -33,9 +43,9 @@ where DELAYER: crate::delay::DelayNs + Clone, {
         Self {
             initialized: false,
             spi,
-            dc,
-            res,
-            cs,
+            dc: dc.into_pin(),
+            res: res.into_pin(),
+            cs: cs.into_pin(),
             delay,
         }
     }
@@ -45,18 +55,18 @@ where DELAYER: crate::delay::DelayNs + Clone, {
     /// This function is unsafe because it allows bypassing any ownership
     /// checks that would normally prevent multiple mutable references to the
     /// same hardware resource.
-    /// 
+    ///
     /// In particular, the OLED display if the hardware framebuffer is used,
     /// may lead to undefined behavior if accessed concurrently.
     pub unsafe fn force_bring_down(self) -> OledPins {
-        let (cs, mosi, clk, dc, res) = (
-            self.cs,
-            self.spi.mosi,
-            self.spi.clk,
-            self.dc,
-            self.res,
-        );
-        (cs, mosi, clk, dc, res)
+        let spi_pins = self.spi.bring_down();
+        (
+            self.cs.bring_down(),
+            spi_pins.mosi,
+            spi_pins.clk,
+            self.dc.bring_down(),
+            self.res.bring_down(),
+        )
     }
 
     /// Safely retrieves the OLED pins, consuming the DisplayPeripheral.
@@ -77,7 +87,7 @@ where DELAYER: crate::delay::DelayNs + Clone, {
     }
 
     /// Initialize the display hardware
-    /// 
+    ///
     /// This function sets up the OLED display for use.
     /// It will also reset the display if it has not been initialized yet.
     pub fn initialize(&mut self) {
