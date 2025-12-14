@@ -29,6 +29,49 @@ where
     fn into_pin(self) -> Pin<I>;
 }
 
+pub mod never_bank {
+    use core::convert::Infallible;
+
+    use embedded_hal::digital::PinState;
+
+    use crate::typesafe::Sealed;
+
+    #[derive(Debug, Clone, Copy)]
+    pub struct NeverPin(pub PinState);
+
+    impl Sealed for NeverPin {}
+
+    impl super::BankPinIds for NeverPin {
+        const BANK_ID: u8 = 0;
+    }
+
+    impl super::ErrorType for NeverPin {
+        type Error = Infallible;
+    }
+
+    impl super::OutputCapablePin for NeverPin {
+        #[inline(always)]
+        fn set_high(&mut self) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        #[inline(always)]
+        fn set_low(&mut self) -> Result<(), Self::Error> {
+            Ok(())
+        }
+    }
+
+    impl super::InputCapablePin for NeverPin {
+        #[inline(always)]
+        fn is_high(&self) -> Result<bool, Self::Error> {
+            Ok(self.0 == PinState::High)
+        }
+        #[inline(always)]
+        fn is_low(&self) -> Result<bool, Self::Error> {
+            Ok(self.0 == PinState::Low)
+        }
+    }
+}
+
 pub mod led_bank {
     use crate::{
         gpio::{BankPinIds, IntoPin, OutputCapablePin, Pin, StatefulOutputCapablePin},
@@ -184,7 +227,9 @@ pub mod btn_bank {
 
 pub mod spi_sdcard_bank {
     use crate::{
-        gpio::{BankPinIds, InputCapablePin, IntoPin, OutputCapablePin, Pin, StatefulOutputCapablePin},
+        gpio::{
+            BankPinIds, InputCapablePin, IntoPin, OutputCapablePin, Pin, StatefulOutputCapablePin,
+        },
         pac,
         typesafe::Sealed,
     };
@@ -298,7 +343,6 @@ pub mod spi_sdcard_bank {
         };
     }
 
-
     define_spi_sdcard_pins! {
         SpiSdCs => 0,
         SpiSdMosi => 1,
@@ -314,7 +358,111 @@ pub mod spi_sdcard_bank {
     impl_spi_sdcard_input! {
         (SpiSdMiso, 3, miso_mask, miso_input),
     }
-    
+}
+
+pub mod spi_oled_bank {
+    use crate::{
+        gpio::{
+            BankPinIds, InputCapablePin, IntoPin, OutputCapablePin, Pin, StatefulOutputCapablePin,
+        },
+        pac,
+        typesafe::Sealed,
+    };
+    use core::convert::Infallible;
+    use embedded_hal::digital::ErrorType;
+
+    pub trait SpiOledBankPin: Sealed + OutputCapablePin + StatefulOutputCapablePin {}
+
+    macro_rules! define_spi_oled_pins {
+        ($($pin_name:ident => $pin_id:expr),* $(,)?) => {
+            $(
+                pub struct $pin_name {
+                    pub(crate) _inner: (),
+                }
+
+                impl Sealed for $pin_name {}
+                impl BankPinIds for $pin_name {
+                    const BANK_ID: u8 = $pin_id;
+                }
+                impl ErrorType for $pin_name {
+                    type Error = Infallible;
+                }
+            )*
+        };
+    }
+
+    macro_rules! impl_spi_oled_output {
+        ($(($pin_name:ident, $pin_id:expr, $pin_mask:ident, $pin_output:ident)),* $(,)?) => {
+            $(
+                impl OutputCapablePin for $pin_name {
+                    #[inline(always)]
+                    fn set_high(&mut self) -> Result<(), Self::Error> {
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        unsafe {
+                            gpio.spi_sdcard().write_with_zero(|w| {
+                                w.$pin_mask()
+                                    .set_bit()
+                                    .$pin_output()
+                                    .set_bit()
+                            });
+                        }
+                        Ok(())
+                    }
+                    #[inline(always)]
+                    fn set_low(&mut self) -> Result<(), Self::Error> {
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        unsafe {
+                            gpio.spi_sdcard().write_with_zero(|w| {
+                                w.$pin_mask()
+                                    .set_bit()
+                                    .$pin_output()
+                                    .clear_bit()
+                            });
+                        }
+                        Ok(())
+                    }
+                }
+
+                impl StatefulOutputCapablePin for $pin_name {
+                    #[inline(always)]
+                    fn is_set_high(&self) -> Result<bool, Self::Error> {
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        Ok(gpio.spi_sdcard().read().$pin_output().bit_is_set())
+                    }
+                    #[inline(always)]
+                    fn is_set_low(&self) -> Result<bool, Self::Error> {
+                        let gpio = unsafe { pac::Gpio::steal() };
+                        Ok(gpio.spi_sdcard().read().$pin_output().bit_is_clear())
+                    }
+                }
+
+                impl SpiSdcardOutputBankPin for $pin_name {}
+
+                impl IntoPin<$pin_name> for $pin_name {
+                    #[inline(always)]
+                    fn into_pin(self) -> Pin<$pin_name> {
+                        Pin::new_output(self)
+                    }
+                }
+            )*
+        };
+    }
+
+    define_spi_oled_pins! {
+        SpiOledCs => 0,
+        SpiOledMosi => 1,
+        SpiOledClk => 2,
+        SpiOledDc => 3,
+        SpiOledRes => 4,
+    }
+
+    impl_spi_oled_output! {
+        (SpiOledCs, 0, cs_mask, cs_output),
+        (SpiOledMosi, 1, mosi_mask, mosi_output),
+        (SpiOledClk, 2, clk_mask, clk_output),
+        (SpiOledDc, 3, dc_mask, dc_output),
+        (SpiOledRes, 4, res_mask, res_output),
+    }
 }
 
 pub struct Pin<I>
@@ -394,8 +542,8 @@ where
     }
 }
 
-pub struct SpiPins<MOSI, CLK, MISO> 
-where 
+pub struct SpiPins<MOSI, CLK, MISO>
+where
     MOSI: OutputCapablePin,
     CLK: OutputCapablePin,
     MISO: InputCapablePin,
@@ -405,8 +553,19 @@ where
     pub miso: MISO,
 }
 
-pub type SpiSdPins = SpiPins<spi_sdcard_bank::SpiSdMosi, spi_sdcard_bank::SpiSdClk, spi_sdcard_bank::SpiSdMiso>;
+pub type SpiSdPins =
+    SpiPins<spi_sdcard_bank::SpiSdMosi, spi_sdcard_bank::SpiSdClk, spi_sdcard_bank::SpiSdMiso>;
 
+pub type SpiOledPins =
+    SpiPins<spi_oled_bank::SpiOledMosi, spi_oled_bank::SpiOledClk, never_bank::NeverPin>;
+
+pub type OledPins = (
+    spi_oled_bank::SpiOledCs,
+    spi_oled_bank::SpiOledMosi,
+    spi_oled_bank::SpiOledClk,
+    spi_oled_bank::SpiOledDc,
+    spi_oled_bank::SpiOledRes,
+);
 pub struct Gpio {
     led0: Option<led_bank::Led0>,
     led1: Option<led_bank::Led1>,
@@ -424,6 +583,7 @@ pub struct Gpio {
     btn6: Option<btn_bank::Btn6>,
     spi_sd: Option<SpiSdPins>,
     spi_sd_cs: Option<spi_sdcard_bank::SpiSdCs>,
+    oled: Option<OledPins>,
 }
 
 impl Gpio {
@@ -449,6 +609,13 @@ impl Gpio {
                 miso: spi_sdcard_bank::SpiSdMiso { _inner: () },
             }),
             spi_sd_cs: Some(spi_sdcard_bank::SpiSdCs { _inner: () }),
+            oled: Some((
+                spi_oled_bank::SpiOledCs { _inner: () },
+                spi_oled_bank::SpiOledMosi { _inner: () },
+                spi_oled_bank::SpiOledClk { _inner: () },
+                spi_oled_bank::SpiOledDc { _inner: () },
+                spi_oled_bank::SpiOledRes { _inner: () },
+            )),
         }
     }
 }
@@ -488,6 +655,11 @@ gpio_take_led! {0,1,2,3,4,5,6,7}
 gpio_take_btn! {1,2,3,4,5,6}
 
 impl Gpio {
+    #[inline(always)]
+    pub fn take_oled(&mut self) -> Option<OledPins> {
+        self.oled.take()
+    }
+
     #[inline(always)]
     pub fn take_spi_sd(&mut self) -> Option<SpiSdPins> {
         self.spi_sd.take()
@@ -592,28 +764,24 @@ impl SpiSdPins {
 
     /// Set output state in one operation
     /// This function sets the output state of the SPI SD card pins.
-    /// 
+    ///
     /// It is more efficient to set both outputs in one operation rather than
     /// setting them individually. Internally, this function writes to the SPI_SDCARD
     /// register once to set both MOSI and CLK outputs.
     #[inline(always)]
-    pub fn set_outputs(
-        &mut self,
-        mosi_high: bool,
-        clk_high: bool,
-    ) -> Result<(), Infallible> {
+    pub fn set_outputs(&mut self, mosi_high: bool, clk_high: bool) -> Result<(), Infallible> {
         // Safety: Volatile write, outside the PIN output, it has no other effect
         let gpio = unsafe { crate::pac::Gpio::steal() };
         unsafe {
             gpio.spi_sdcard().write_with_zero(|w| {
                 w.mosi_mask()
-                .set_bit()
-                .mosi_output()
-                .bit(mosi_high)
-                .clk_mask()
-                .set_bit()
-                .clk_output()
-                .bit(clk_high)
+                    .set_bit()
+                    .mosi_output()
+                    .bit(mosi_high)
+                    .clk_mask()
+                    .set_bit()
+                    .clk_output()
+                    .bit(clk_high)
             });
         }
         Ok(())
@@ -621,14 +789,12 @@ impl SpiSdPins {
 
     /// Read input / output current states in one operation
     /// This function reads the input state of MISO and the output states of MOSI and CLK.
-    /// 
+    ///
     /// It is more efficient to read all three states in one operation rather than
     /// reading them individually. Internally, this function reads the SPI_SDCARD
     /// register once to get the states.
     #[inline(always)]
-    pub fn read_states(
-        &self,
-    ) -> Result<(bool, bool, bool), Infallible> {
+    pub fn read_states(&self) -> Result<(bool, bool, bool), Infallible> {
         // Safety: Read-only, have no other effect
         let gpio = unsafe { crate::pac::Gpio::steal() };
         let reg = gpio.spi_sdcard().read();

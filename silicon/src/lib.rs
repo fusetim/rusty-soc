@@ -1,16 +1,12 @@
 #![no_std]
 #![no_main]
-use embedded_hal::delay;
-use embedded_hal::digital::{InputPin, OutputPin, PinState, StatefulOutputPin};
-use embedded_hal::spi::{SpiBus, SpiDevice};
+use embedded_hal::digital::{OutputPin, PinState};
 use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::SdCard;
-use silicon_hal::gpio::led_bank::Led5;
 use silicon_hal::spi::SpiSoft;
 use silicon_hal::{
     delay::{DelayNs, INTR_DELAY},
     gpio::IntoPin as _,
-    spi::Spi,
 };
 
 #[panic_handler]

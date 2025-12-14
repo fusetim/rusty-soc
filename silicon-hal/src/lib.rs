@@ -4,6 +4,7 @@ pub use silicon_pac as pac;
 
 pub mod dac;
 pub mod delay;
+pub mod display;
 pub mod gpio;
 pub mod spi;
 pub mod timer;

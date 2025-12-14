@@ -89,12 +89,12 @@
             <groupName>GPIO</groupName>
             <addressBlock>
                 <offset>0x0</offset>
-                <size>0x0C</size>
+                <size>0x10</size>
                 <usage>registers</usage>
             </addressBlock>
             <addressBlock>
                 <offset>0x0C</offset>
-                <size>0x3f3</size>
+                <size>0x3ef</size>
                 <usage>reserved</usage>
             </addressBlock>
             <registers>
@@ -196,6 +196,78 @@
                             <name>CLK_MASK</name>
                             <description>Mask/unmask the output for SPI CLK. It must be HIGH if you expect CLK_OUTPUT to have an effect.</description>
                             <bitOffset>10</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>SPI_OLED</name>
+                    <description>Control of the input-output pins directly wired to the OLED display SPI interface. Some pins are input-only or output-only.</description>
+                    <addressOffset>0x0C</addressOffset>
+                    <size>16</size>
+                    <access>read-write</access>
+                    <resetValue>0x0000</resetValue>
+                    <fields>
+                        <field>
+                            <name>CS_OUTPUT</name>
+                            <description>Read/Set output of the SD card SPI CS</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                        <field derivedFrom="CS_OUTPUT">
+                            <name>MOSI_OUTPUT</name>
+                            <description>Read/Set output of the SD card SPI MOSI</description>
+                            <bitOffset>1</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                        <field derivedFrom="CS_OUTPUT">
+                            <name>CLK_OUTPUT</name>
+                            <description>Read/Set output of the SD card SPI CLK</description>
+                            <bitOffset>2</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                        <field derivedFrom="CS_OUTPUT">
+                            <name>DC_OUTPUT</name>
+                            <description>Read/Set output of the OLED display Data/Command pin</description>
+                            <bitOffset>3</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                        <field derivedFrom="CS_OUTPUT">
+                            <name>RESET_OUTPUT</name>
+                            <description>Read/Set output of the OLED display Reset pin</description>
+                            <bitOffset>4</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                        <field>
+                            <name>CS_MASK</name>
+                            <description>Mask/unmask the output for SPI CS. It must be HIGH if you expect CS_OUTPUT to have an effect.</description>
+                            <bitOffset>8</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                        <field derivedFrom="CS_MASK">
+                            <name>MOSI_MASK</name>
+                            <description>Mask/unmask the output for SPI MOSI. It must be HIGH if you expect MOSI_OUTPUT to have an effect.</description>
+                            <bitOffset>9</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                        <field derivedFrom="CS_MASK">
+                            <name>CLK_MASK</name>
+                            <description>Mask/unmask the output for SPI CLK. It must be HIGH if you expect CLK_OUTPUT to have an effect.</description>
+                            <bitOffset>10</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                        <field derivedFrom="CS_MASK">
+                            <name>DC_MASK</name>
+                            <description>Mask/unmask the output for SPI DC. It must be HIGH if you expect DC_OUTPUT to have an effect.</description>
+                            <bitOffset>11</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                        <field derivedFrom="CS_MASK">
+                            <name>RESET_MASK</name>
+                            <description>Mask/unmask the output for SPI RESET. It must be HIGH if you expect RESET_OUTPUT to have an effect.</description>
+                            <bitOffset>12</bitOffset>
                             <bitWidth>1</bitWidth>
                         </field>
                     </fields>

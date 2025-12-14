@@ -108,6 +108,11 @@ $$end
     // GPIO Peripheral
     uint1 gpio_en(0);
     uint1 gpio_rst(0);
+    uint1 gpio_oled_csn(0);     // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
+    uint1 gpio_oled_mosi(0);    // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
+    uint1 gpio_oled_clk(0);     // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
+    uint1 gpio_oled_dc(0);      // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
+    uint1 gpio_oled_resn(0);    // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
     gpio_peripheral gpio(
         rst <: gpio_rst, // no reset for now
         // Memory-mapped I/O interface
@@ -119,10 +124,17 @@ $$end
         // GPIO signals
         leds        :> leds,
         btns        <: btns,
+        // SPI - SD Card
         sd_cs       :> sd_csn,
         sd_mosi     :> sd_mosi,
         sd_clk      :> sd_clk,
         sd_miso     <: sd_miso,
+        // SPI - OLED Display
+        oled_cs     :> gpio_oled_csn,
+        oled_mosi   :> gpio_oled_mosi,
+        oled_clk    :> gpio_oled_clk,
+        oled_dc     :> gpio_oled_dc,
+        oled_res    :> gpio_oled_resn,
     );
 
     // SPI Peripherals
@@ -195,6 +207,13 @@ $$end
         spi0.mem_wr_data = prev_wdata;
         spi0.mem_wr_en   = prev_mem_rw;
         */
+
+        // Display signals for OLED when Hardware Framebuffer is disabled
+        oled_csn  = gpio_oled_csn;
+        oled_mosi = gpio_oled_mosi;
+        oled_clk  = gpio_oled_clk;
+        oled_dc   = gpio_oled_dc;
+        oled_resn = gpio_oled_resn;
 
         // Memory Interface
         memio.rdata =   (~peripheral_en ? ram.rdata : 32b0)

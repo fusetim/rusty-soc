@@ -140,7 +140,7 @@ where
 
 /// Software (bit-banged) SPI implementation
 /// Uses embedded-hal traits for GPIO pins and delay
-/// 
+///
 /// Assumes Mode 0 (CPOL=0, CPHA=0) operation
 /// SPI frequency assumes to be 400kHz - one symbol is 2.5us
 pub struct SpiSoft<CLK, MOSI, MISO, DELAYER>
@@ -162,10 +162,7 @@ where
     DELAYER: embedded_hal::delay::DelayNs,
 {
     pub fn new(spi: SpiPins<MOSI, CLK, MISO>, delay: DELAYER) -> Self {
-        Self {
-            spi,
-            delay,
-        }
+        Self { spi, delay }
     }
 
     /// Consume the software SPI and return the underlying pins
@@ -174,6 +171,7 @@ where
     }
 
     /// Transfer a single byte over SPI and return the received byte
+    #[inline(always)]
     fn transfer_byte(&mut self, byte: u8) -> u8 {
         // 400kHz SPI: 2.5us per bit = 1.25us high, 1.25us low
         let mut received: u8 = 0;
@@ -257,5 +255,3 @@ where
         Ok(())
     }
 }
-
-

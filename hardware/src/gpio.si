@@ -15,22 +15,31 @@ unit gpio_peripheral(
     output! uint1        sd_mosi(1b0),
     output! uint1        sd_clk(1b0),
     input  uint1         sd_miso,
+    // SPI - OLED Display
+    output! uint1        oled_cs(1b1),
+    output! uint1        oled_mosi(1b0),
+    output! uint1        oled_clk(1b0),
+    output! uint1        oled_dc(1b0),
+    output! uint1        oled_res(1b1),
 ) {
     // Register addresses (word-aligned)
     uint10 REG_LED_RW(10h00); // LED Read/Write
     uint10 REG_BTN_R(10h04); // Button Read-only
     uint10 REG_SPI_SD_RW(10h08); // SPI SD Card Read/Write
+    uint10 REG_SPI_OLED_RW(10h0C); // SPI OLED Display Read/Write
 
     always {
         uint10 mem_addr_ext = {mem_addr, 2b00}; // Extend to word-aligned address
         uint1 leds_access            = (mem_addr_ext == REG_LED_RW); 
         uint1 button_access          = (mem_addr_ext == REG_BTN_R);
         uint1 spi_sd_access          = (mem_addr_ext == REG_SPI_SD_RW);
+        uint1 spi_oled_access        = (mem_addr_ext == REG_SPI_OLED_RW);
 
         // Handle read from GPIO peripheral
         mem_rd_data = (mem_en & leds_access) ? {24b0, leds} :
                       (mem_en & button_access) ? {25b0, btns} :
                       (mem_en & spi_sd_access) ? {28b0, sd_miso, sd_clk, sd_mosi, sd_cs} :
+                      (mem_en & spi_oled_access) ? {27b0, oled_res, oled_dc, oled_clk, oled_mosi, oled_cs} :
                       32b0;
 
         // Handle write to GPIO peripheral
@@ -39,13 +48,22 @@ unit gpio_peripheral(
             uint8 led_mask = leds_access ? mem_wr_data[8,8] : 8h00;
             leds           = (leds & ~led_mask) | (mem_wr_data[0,8] & led_mask);
 
+            // BTN - read-only, no write operation
+
             // Update SPI SD Card signals
             uint3 spi_sd_mask = spi_sd_access ? mem_wr_data[8,3] : 3b000;
             sd_cs          = spi_sd_mask[0,1] ? mem_wr_data[0,1] : sd_cs;
             sd_mosi        = spi_sd_mask[1,1] ? mem_wr_data[1,1] : sd_mosi;
             sd_clk         = spi_sd_mask[2,1] ? mem_wr_data[2,1] : sd_clk;
 
-            // BTN - read-only, no write operation
+            // Update SPI OLED Display signals
+            uint5 spi_oled_mask = spi_oled_access ? mem_wr_data[8,5] : 5b00000;
+            oled_cs        = spi_oled_mask[0,1] ? mem_wr_data[0,1] : oled_cs;
+            oled_mosi      = spi_oled_mask[1,1] ? mem_wr_data[1,1] : oled_mosi;
+            oled_clk       = spi_oled_mask[2,1] ? mem_wr_data[2,1] : oled_clk;
+            oled_dc        = spi_oled_mask[3,1] ? mem_wr_data[3,1] : oled_dc;
+            oled_res       = spi_oled_mask[4,1] ? mem_wr_data[4,1] : oled_res;
+
         }
         if (rst) {
             leds = 8h00; // Reset LEDs to 0 on reset
@@ -62,6 +80,10 @@ unit gpio_peripheral(
             if (mem_en & spi_sd_access) {
                 __display("SPI SD Card: CS=%b, MOSI=%b, MISO=%b, CLK=%b",
                     sd_cs, sd_mosi, sd_miso, sd_clk);
+            }
+            if (mem_en & spi_oled_access) {
+                __display("SPI OLED Display: CS=%b, MOSI=%b, CLK=%b, DC=%b, RES=%b",
+                    oled_cs, oled_mosi, oled_clk, oled_dc, oled_res);
             }
         $$end
     }
