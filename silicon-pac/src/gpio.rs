@@ -5,7 +5,7 @@ pub struct RegisterBlock {
     _reserved1: [u8; 0x02],
     btn: Btn,
     _reserved2: [u8; 0x03],
-    spi_cs: SpiCs,
+    spi_sdcard: SpiSdcard,
 }
 impl RegisterBlock {
     #[doc = "0x00 - Control of the output of the on-board LEDs."]
@@ -18,10 +18,10 @@ impl RegisterBlock {
     pub const fn btn(&self) -> &Btn {
         &self.btn
     }
-    #[doc = "0x08 - Control of the output of the on-board SPI chip selects."]
+    #[doc = "0x08 - Control of the input-output pins directly wired to the SD card SPI interface. Some pins are input-only or output-only."]
     #[inline(always)]
-    pub const fn spi_cs(&self) -> &SpiCs {
-        &self.spi_cs
+    pub const fn spi_sdcard(&self) -> &SpiSdcard {
+        &self.spi_sdcard
     }
 }
 #[doc = "LED (rw) register accessor: Control of the output of the on-board LEDs.\n\nYou can [`read`](crate::Reg::read) this register and get [`led::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`led::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@led`] module"]
@@ -34,8 +34,8 @@ pub mod led;
 pub type Btn = crate::Reg<btn::BtnSpec>;
 #[doc = "Get state of the on-board BTN inputs."]
 pub mod btn;
-#[doc = "SPI_CS (rw) register accessor: Control of the output of the on-board SPI chip selects.\n\nYou can [`read`](crate::Reg::read) this register and get [`spi_cs::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`spi_cs::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@spi_cs`] module"]
-#[doc(alias = "SPI_CS")]
-pub type SpiCs = crate::Reg<spi_cs::SpiCsSpec>;
-#[doc = "Control of the output of the on-board SPI chip selects."]
-pub mod spi_cs;
+#[doc = "SPI_SDCARD (rw) register accessor: Control of the input-output pins directly wired to the SD card SPI interface. Some pins are input-only or output-only.\n\nYou can [`read`](crate::Reg::read) this register and get [`spi_sdcard::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`spi_sdcard::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@spi_sdcard`] module"]
+#[doc(alias = "SPI_SDCARD")]
+pub type SpiSdcard = crate::Reg<spi_sdcard::SpiSdcardSpec>;
+#[doc = "Control of the input-output pins directly wired to the SD card SPI interface. Some pins are input-only or output-only."]
+pub mod spi_sdcard;

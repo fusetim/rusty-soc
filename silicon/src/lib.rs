@@ -5,6 +5,8 @@ use embedded_hal::digital::{InputPin, OutputPin, PinState, StatefulOutputPin};
 use embedded_hal::spi::{SpiBus, SpiDevice};
 use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::SdCard;
+use silicon_hal::gpio::led_bank::Led5;
+use silicon_hal::spi::SpiSoft;
 use silicon_hal::{
     delay::{DelayNs, INTR_DELAY},
     gpio::IntoPin as _,
@@ -34,12 +36,13 @@ fn main() -> ! {
             led7.into_pin(),
         )
     };
-    let mut sd_cs = peripherals.gpio.take_sd_cs().unwrap().into_pin();
-    let spi0 = Spi::new(peripherals.spi0);
+    let spi_sd = peripherals.gpio.take_spi_sd().unwrap();
+    let mut sd_cs = peripherals.gpio.take_spi_sd_cs().unwrap().into_pin();
+    let spi_soft = SpiSoft::new(spi_sd, INTR_DELAY);
 
     sd_cs.set_high();
     delay_ms(250);
-    let spi_sd = ExclusiveDevice::new(spi0, sd_cs, INTR_DELAY).unwrap();
+    let spi_sd = ExclusiveDevice::new(spi_soft, sd_cs, INTR_DELAY).unwrap();
 
     let mut sdcard = SdCard::new(spi_sd, INTR_DELAY);
 
@@ -60,41 +63,39 @@ fn main() -> ! {
         // Read the SD card capacity
         match sdcard.num_bytes() {
             Ok(cap) => {
-                led1.set_state(to_pin_state(cap > 0));
-                led2.set_state(to_pin_state(cap > 1_000_000));
-                led3.set_state(to_pin_state(cap > 10_000_000));
-                led4.set_state(to_pin_state(cap > 100_000_000));
-                led5.set_state(to_pin_state(cap > 1_000_000_000));
-                led6.set_state(to_pin_state(cap > 10_000_000_000));
+                let cap_gb = cap / (1024 * 1024 * 1024);
+                led1.set_state(to_pin_state(cap_gb & 0x01 != 0));
+                led2.set_state(to_pin_state(cap_gb & 0x02 != 0));
+                led3.set_state(to_pin_state(cap_gb & 0x04 != 0));
+                led4.set_state(to_pin_state(cap_gb & 0x08 != 0));
+                led5.set_state(to_pin_state(cap_gb & 0x10 != 0));
+                led6.set_state(to_pin_state(cap_gb & 0x20 != 0));
                 led7.set_low();
             }
-            Err(err) => {
-                match err {
-                    embedded_sdmmc::SdCardError::RegisterReadError => {
-                        led1.set_high();
-                    }
-                    embedded_sdmmc::SdCardError::CrcError(_,_) => {
-                        led2.set_high();
-                    }
-                    embedded_sdmmc::SdCardError::ReadError => {
-                        led3.set_high();
-                    }
-                    embedded_sdmmc::SdCardError::WriteError => {
-                        led4.set_high();
-                    }
-                    embedded_sdmmc::SdCardError::BadState => {
-                        led5.set_high();
-                    }
-                    embedded_sdmmc::SdCardError::CardNotFound => {
-                        led6.set_high();
-                    }
-                    embedded_sdmmc::SdCardError::GpioError => {
-                        led7.set_high();
-                    }
-                    _ => {
-                    }
+            Err(err) => match err {
+                embedded_sdmmc::SdCardError::RegisterReadError => {
+                    led1.set_high();
                 }
-            }
+                embedded_sdmmc::SdCardError::CrcError(_, _) => {
+                    led2.set_high();
+                }
+                embedded_sdmmc::SdCardError::ReadError => {
+                    led3.set_high();
+                }
+                embedded_sdmmc::SdCardError::WriteError => {
+                    led4.set_high();
+                }
+                embedded_sdmmc::SdCardError::BadState => {
+                    led5.set_high();
+                }
+                embedded_sdmmc::SdCardError::CardNotFound => {
+                    led6.set_high();
+                }
+                embedded_sdmmc::SdCardError::GpioError => {
+                    led7.set_high();
+                }
+                _ => {}
+            },
         }
 
         // Toggle LEDs to indicate activity

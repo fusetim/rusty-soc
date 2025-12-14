@@ -146,30 +146,57 @@
                     </fields>
                 </register>
                 <register>
-                    <name>SPI_CS</name>
-                    <description>Control of the output of the on-board SPI chip selects.</description>
+                    <name>SPI_SDCARD</name>
+                    <description>Control of the input-output pins directly wired to the SD card SPI interface. Some pins are input-only or output-only.</description>
                     <addressOffset>0x08</addressOffset>
                     <size>16</size>
                     <access>read-write</access>
                     <resetValue>0x0000</resetValue>
                     <fields>
                         <field>
-                            <dim>8</dim>
-                            <dimIncrement>1</dimIncrement>
-                            <name>CS_OUTPUT%s</name>
-                            <description>Set output of the %sth SPI CS</description>
+                            <name>CS_OUTPUT</name>
+                            <description>Read/Set output of the SD card SPI CS</description>
                             <bitOffset>0</bitOffset>
                             <bitWidth>1</bitWidth>
                             <access>read-write</access>
                         </field>
+                        <field derivedFrom="CS_OUTPUT">
+                            <name>MOSI_OUTPUT</name>
+                            <description>Read/Set output of the SD card SPI MOSI</description>
+                            <bitOffset>1</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                        <field derivedFrom="CS_OUTPUT">
+                            <name>CLK_OUTPUT</name>
+                            <description>Read/Set output of the SD card SPI CLK</description>
+                            <bitOffset>2</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
                         <field>
-                            <dim>8</dim>
-                            <dimIncrement>1</dimIncrement>
-                            <name>CS_MASK%s</name>
-                            <description>Mask/unmask the output for %sth SPI CS. It must be HIGH if you expect CS_OUTPUT%s to have an effect.</description>
+                            <name>MISO_INPUT</name>
+                            <description>Read the input of the SD card SPI MISO</description>
+                            <bitOffset>3</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                        <field>
+                            <name>CS_MASK</name>
+                            <description>Mask/unmask the output for SPI CS. It must be HIGH if you expect CS_OUTPUT to have an effect.</description>
                             <bitOffset>8</bitOffset>
                             <bitWidth>1</bitWidth>
-                            <access>read-write</access>
+                            <access>write-only</access>
+                        </field>
+                        <field derivedFrom="CS_MASK">
+                            <name>MOSI_MASK</name>
+                            <description>Mask/unmask the output for SPI MOSI. It must be HIGH if you expect MOSI_OUTPUT to have an effect.</description>
+                            <bitOffset>9</bitOffset>
+                            <bitWidth>1</bitWidth>
+                        </field>
+                        <field derivedFrom="CS_MASK">
+                            <name>CLK_MASK</name>
+                            <description>Mask/unmask the output for SPI CLK. It must be HIGH if you expect CLK_OUTPUT to have an effect.</description>
+                            <bitOffset>10</bitOffset>
+                            <bitWidth>1</bitWidth>
                         </field>
                     </fields>
                 </register>

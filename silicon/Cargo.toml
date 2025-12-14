@@ -10,7 +10,7 @@ crate-type = ["staticlib"]
 silicon-hal = { path = "../silicon-hal" }
 embedded-hal = "1"
 embedded-hal-bus = "0.3.0"
-embedded-sdmmc = "0.9.0"
+embedded-sdmmc = { version = "0.9.0", default-features = false, features = [] }
 
 [profile.dev]
 panic = "abort"
