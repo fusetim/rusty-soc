@@ -10,7 +10,6 @@ pub trait SpiPeripheral: Sealed + 'static {
     fn get_perif() -> &'static pac::spi0::RegisterBlock;
 }
 
-#[derive(Debug)]
 pub struct Spi<P: SpiPeripheral> {
     peripheral: P,
 }

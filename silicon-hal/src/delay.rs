@@ -14,7 +14,7 @@ pub const TIMER0_DELAY: Timer0Delay = Timer0Delay { _inner: () };
 /// 1 instruction cycle = 3 clock cycles (4 for Store/Load)
 /// Clock speed = 25 MHz
 /// Therefore, 1 instruction cycle = 1 / (25 MHz / 3) = 120 ns
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct IntrDelay {
     _inner: (),
 }
@@ -72,7 +72,7 @@ impl DelayNs for IntrDelay {
 /// Delay peripheral based on TIMER0 (1MHz clock)
 ///
 /// TIMER0 is 64-bit clock which increments every 1 micros.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Timer0Delay {
     _inner: (),
 }

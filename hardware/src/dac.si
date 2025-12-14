@@ -1,0 +1,68 @@
+/// Simple 8-bit to 4-bit DAC using PWM
+/// Input: 8-bit audio sample (0-255)
+/// Output: 4-bit PWM value (0-15)
+///
+/// The PWM frequency is set to 100 kHz, which should be sufficient for audio output
+unit dac(
+    input uint8 in,
+    output uint4 out
+){
+  // PWM period is 100 kHz (aka 250 clock cycles at 25MHz)
+  // audio_out will either be 0 (no sound) or 15 (max sound)
+  uint10 cycle(0);
+
+  always {
+    // count cycles
+    cycle = cycle == 249 ? 0 : cycle + 1;
+
+    // audio_in is 8bit: 0-255 for 0V to max voltage
+    // as a first approach, we can simply map
+    // audio_in (0-255) to PWM threshold (0-249)
+    // (a bit of a crude mapping, but works for now)
+    out = (cycle < in) ? 8 : 0;
+  }
+}
+
+/// Audio DAC Peripheral
+unit dac_peripheral(
+    // Memory-mapped I/O interface
+    input  uint8        mem_addr,
+    input  uint32       mem_wr_data,
+    input  uint4        mem_wr_en,
+    // output! uint32   mem_rd_data(32b0), - No reads for this peripheral
+    // Audio Output signals
+    output uint4        audio_left_out(4b0000),
+    output uint4        audio_right_out(4b0000)
+) {
+    // Register addresses (word-aligned)
+    uint10 REG_OUTPUT_W(10h00); // LED Write
+
+    uint8 audio_left_sample(8b00000000);
+    uint8 audio_right_sample(8b00000000);
+
+    // Instantiate DAC units for left and right audio channels
+    dac dac_left(
+        in <: audio_left_sample,
+        out :> audio_left_out
+    );
+
+    dac dac_right(
+        in <: audio_right_sample,
+        out :> audio_right_out
+    );
+
+    always {
+        uint10 mem_addr_ext = {mem_addr, 2b00}; // Extend to word-aligned address
+        uint1 access        = (mem_addr_ext == REG_OUTPUT_W);
+
+        // Handle read from GPIO peripheral
+        // mem_rd_data = 32b0;
+
+        // Handle write to GPIO peripheral
+        if ((mem_wr_en != 4b0000)) {
+            // Update audio output if writing to output register
+            audio_left_sample  = access & mem_wr_en[0,1] ? mem_wr_data[0,8]   : audio_left_sample;
+            audio_right_sample = access & mem_wr_en[1,1] ? mem_wr_data[8,8] : audio_right_sample;
+        }
+    }
+}

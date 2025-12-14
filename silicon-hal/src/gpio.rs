@@ -36,7 +36,7 @@ pub mod never_bank {
 
     use crate::typesafe::Sealed;
 
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Clone, Copy)]
     pub struct NeverPin(pub PinState);
 
     impl Sealed for NeverPin {}

@@ -293,8 +293,33 @@
             </addressBlock>
             <registers>
                 <register>
+                    <name>LEFT_OUTPUT</name>
+                    <description>Control the left output of the DAC.</description>
+                    <addressOffset>0x00</addressOffset>
+                    <size>8</size>
+                    <access>write-only</access>
+                    <resetValue>0x00</resetValue>
+                    <fields>
+                        <field>
+                            <name>VALUE</name>
+                            <description>Set the output value</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register derivedFrom="LEFT_OUTPUT">
+                    <name>RIGHT_OUTPUT</name>
+                    <description>Control the right output of the DAC.</description>
+                    <addressOffset>0x01</addressOffset>
+                    <size>8</size>
+                    <access>write-only</access>
+                    <resetValue>0x00</resetValue>
+                </register>
+                <register>
                     <name>OUTPUT</name>
-                    <description>Control the output of the DAC.</description>
+                    <description>Control the output of the DAC (left and right).</description>
                     <addressOffset>0x00</addressOffset>
                     <size>16</size>
                     <access>write-only</access>
@@ -302,14 +327,14 @@
                     <fields>
                         <field>
                             <name>LEFT_OUTPUT</name>
-                            <description>Set the left output value (big-endian)</description>
+                            <description>Set the left output value</description>
                             <bitOffset>0</bitOffset>
                             <bitWidth>8</bitWidth>
                             <access>write-only</access>
                         </field>
-                        <field>
+                        <field derivedFrom="LEFT_OUTPUT">
                             <name>RIGHT_OUTPUT</name>
-                            <description>Set the right output value (big-endian)</description>
+                            <description>Set the right output value</description>
                             <bitOffset>8</bitOffset>
                             <bitWidth>8</bitWidth>
                             <access>write-only</access>

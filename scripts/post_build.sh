@@ -11,6 +11,7 @@ CMD_AS="riscv64-unknown-elf-as"
 CMD_LD="riscv64-unknown-elf-ld"
 CMD_GCC="riscv64-unknown-elf-gcc"
 CMD_OBJCOPY="riscv64-unknown-elf-objcopy"
+CMD_RANLIB="riscv64-unknown-elf-ranlib"
 
 # Compile the entrypoint (asm)
 echo "Assembling entrypoint..."
@@ -22,9 +23,10 @@ if [[ "$OUTPUT_FILE" == "silicon" ]]; then
     # Set bash to fail on error
     set -e
 
-    $CMD_LD --gc-sections -m elf32lriscv -b elf32-littleriscv -Tsilicon/memory.x --no-relax -o "$OUTPUT_DIR/silicon.elf" "$OUTPUT_DIR/entry.o" "$OUTPUT_DIR/libsilicon.a"
-    $CMD_OBJCOPY -O verilog "$OUTPUT_DIR/silicon.elf" "$OUTPUT_DIR/silicon.hex"
-    $CMD_OBJCOPY -O binary "$OUTPUT_DIR/silicon.elf" "$OUTPUT_DIR/silicon.bin"
+    #$CMD_LD --gc-sections -m elf32lriscv -b elf32-littleriscv -Tsilicon/memory.x --no-relax -o "$OUTPUT_DIR/silicon.elf" "$OUTPUT_DIR/entry.o" "$OUTPUT_DIR/libsilicon.a"
+    #$CMD_RANLIB "$OUTPUT_DIR/libsilicon.a"
+    $CMD_OBJCOPY -O verilog "$BUILD_ARTIFACT" "$OUTPUT_DIR/silicon.hex"
+    $CMD_OBJCOPY -O binary "$BUILD_ARTIFACT" "$OUTPUT_DIR/silicon.bin"
     echo "Generated silicon.hex and silicon.bin for FPGA."
 
     # Print the full path to the silicon.hex file

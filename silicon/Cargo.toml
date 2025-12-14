@@ -1,23 +1,26 @@
+cargo-features = ["panic-immediate-abort"]
+
 [package]
 name = "silicon"
 version = "0.1.0"
 edition = "2024"
 
-[lib]
-crate-type = ["staticlib"]
-
 [dependencies]
-silicon-hal = { path = "../silicon-hal" }
+silicon-hal = { path = "../silicon-hal", features= ["rt"]}
 embedded-hal = "1"
-embedded-hal-bus = "0.3.0"
-embedded-sdmmc = { version = "0.9.0", default-features = false, features = [] }
+embedded-hal-bus = { version = "0.3.0", default-features =  false, features = [] }
+embedded-sdmmc = { path = "../embedded-sdmmc-rs", default-features = false, features = [] }
+riscv-rt = { version = "0.16.0", features = ["single-hart"] }
 
 [profile.dev]
-panic = "abort"
+panic = "immediate-abort"
 strip = true
 opt-level = "s"
 
 [profile.release]
-panic = "abort"
+panic = "immediate-abort"
 strip = true
-opt-level = "s"
+lto = "fat"
+codegen-units = 1
+incremental = false
+opt-level = "z"

@@ -15,6 +15,8 @@ $include('../lib/silice/projects/ice-v/SOCs/ice-v-oled.si')
 $include('./gpio.si')
 // Includes the SPI peripheral
 $include('./spi.si')
+// Includes the DAC peripheral
+$include('./dac.si')
 // -- End of Includes -- //
 
 // Setup memory size
@@ -164,6 +166,18 @@ $$end
     );
     */
 
+    // DAC Peripheral for Audio Output
+    uint1 dac_en(0);
+    dac_peripheral dac(
+        // Memory-mapped I/O interface
+        // mem_addr    <: prev_mem_addr[0,8],
+        // mem_wr_data <: prev_wdata,
+        // mem_wr_en   <: prev_mem_rw,
+        // Audio Output signals
+        audio_left_out  :> audio_l,
+        audio_right_out :> audio_r
+    );
+
     // -- End of Peripherals -- //
 
     // -- Internal SoC states -- //
@@ -192,8 +206,9 @@ $$end
         */
 
         // Peripheral enable signals
-        uint1 peripheral_en = prev_mem_addr[$periph_bit$,1];
+        uint1 peripheral_en = prev_mem_addr[$periph_bit$,1]; // 100000000000000
         gpio_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000001); // GPIO at 0x10400 = 0b100000100000000
+        dac_en  = peripheral_en & (prev_mem_addr[8, 6] == 6b000010); // DAC at 0x10800 = 0b100001000000000
         //spi0_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000011); // SPI0 at 0x10C00 = 0b100001100000000
 
         // GPIO Peripheral memory-mapped I/O access
@@ -207,6 +222,11 @@ $$end
         spi0.mem_wr_data = prev_wdata;
         spi0.mem_wr_en   = prev_mem_rw;
         */
+
+        // DAC Peripheral memory-mapped I/O access
+        dac.mem_addr    = prev_mem_addr[0,8];
+        dac.mem_wr_data = prev_wdata;
+        dac.mem_wr_en   = prev_mem_rw;
 
         // Display signals for OLED when Hardware Framebuffer is disabled
         oled_csn  = gpio_oled_csn;
@@ -230,10 +250,13 @@ $$end
                 if (gpio_en) {
                     __display("[cycle %d] GPIO access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
                 }
+                if (dac_en) {
+                    __display("[cycle %d] DAC access: %h(%b) < %h",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata);
+                }
                 // if (spi0_en) {
                 //     __display("[cycle %d] SPI0 access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
                 // }
-                if (~gpio_en /*& ~spi0_en*/) {
+                if (~gpio_en & ~dac_en /*& ~spi0_en*/) {
                     __display("[cycle %d] Peripheral access to unknown address: %b",cycle,prev_mem_addr);
                 }
             }

@@ -39,6 +39,8 @@ unit execute(
 ) {
   uint5  shamt(0);  uint32 cycle(0); // shifter status and cycle counter
   always {
+    __display("EXECUTE: instr=%h, pc=%h, xa=%h, xb=%h", instr, {pc, 2b00}, {xa}, {xb});
+
     // ==== decode immediates
     int32 imm_u  = {instr[12,20],12b0};
     int32 imm_j  = {{12{instr[31,1]}},instr[12,8],instr[20,1],instr[21,10],1b0};
