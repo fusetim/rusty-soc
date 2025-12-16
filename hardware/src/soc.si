@@ -7,16 +7,14 @@ $$dofile('pre_include_compiled.lua')
 // Includes the processor
 $include('../lib/silice/projects/ice-v/CPUs/ice-v.si')
 
-// Includes the SPIscreen driver
-$$ OLED_SLOW=1
-$include('../lib/silice/projects/ice-v/SOCs/ice-v-oled.si')
-
 // Includes the GPIO peripheral
 $include('./gpio.si')
 // Includes the SPI peripheral
 $include('./spi.si')
 // Includes the DAC peripheral
 $include('./dac.si')
+// Includes the DISPLAY peripheral
+$include('./display.si')
 // -- End of Includes -- //
 
 // Setup memory size
@@ -53,10 +51,10 @@ $$if AUDIO then
     output uint4 audio_l,
     output uint4 audio_r,
 $$end
-    output uint1 oled_clk,
-    output uint1 oled_mosi,
-    output uint1 oled_dc,
-    output uint1 oled_resn,
+    output! uint1 oled_clk,
+    output! uint1 oled_mosi,
+    output! uint1 oled_dc,
+    output! uint1 oled_resn,
     output! uint1 oled_csn(0),
 $$if VERILATOR then
     // configuration for SPIscreen simulation
@@ -178,6 +176,21 @@ $$end
         audio_right_out :> audio_r
     );
 
+    // Display Peripheral for OLED Screen with Hardware Framebuffer
+    uint1 display_peripheral_en(0);
+    display_peripheral display_peripheral(
+        // Memory-mapped I/O interface
+        // mem_addr    <: prev_mem_addr[0,8],
+        // mem_wr_data <: prev_wdata,
+        // mem_wr_en   <: prev_mem_rw,
+        // OLED Display SPI interface
+        oled_clk    :> oled_clk,
+        oled_mosi   :> oled_mosi,
+        oled_dc     :> oled_dc,
+        oled_resn   :> oled_resn,
+        oled_csn    :> oled_csn
+    )
+
     // -- End of Peripherals -- //
 
     // -- Internal SoC states -- //
@@ -253,10 +266,13 @@ $$end
                 if (dac_en) {
                     __display("[cycle %d] DAC access: %h(%b) < %h",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata);
                 }
-                // if (spi0_en) {
+                if (display_peripheral_en) {
+                    __display("[cycle %d] DISPLAY access: %h(%b) < %h",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata);
+                }
+                // ifD a (spi0_en) {
                 //     __display("[cycle %d] SPI0 access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
                 // }
-                if (~gpio_en & ~dac_en /*& ~spi0_en*/) {
+                if (~gpio_en & ~dac_en & ~display_peripheral_en /*& ~spi0_en*/) {
                     __display("[cycle %d] Peripheral access to unknown address: %b",cycle,prev_mem_addr);
                 }
             }

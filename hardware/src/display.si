@@ -1,0 +1,73 @@
+$$ OLED_SLOW=1
+// Includes the SPIscreen driver
+$include('../../lib/silice/projects/ice-v/SOCs/ice-v-oled.si')
+
+/// Display Peripheral
+///
+/// This peripheral manages the on-board OLED display (SSD1351).
+/// It provides a memory-mapped interface to send CMD or DATA to the display
+/// and also a hardware framebuffer for direct pixel manipulation. 
+unit display_peripheral(
+    // Memory-mapped I/O interface
+    input  uint8        mem_addr,
+    input  uint32       mem_wr_data,
+    input  uint4        mem_wr_en,
+    output! uint32      mem_rd_data(32b0),
+    // OLED Display SPI interface
+    output! uint1 oled_clk,
+    output! uint1 oled_mosi,
+    output! uint1 oled_dc,
+    output! uint1 oled_resn,
+    output! uint1 oled_csn(0),
+) {
+    // Register addresses (word-aligned)
+    uint10 REG_CTRL_RW(10h00); // Control register RW
+    uint10 REG_TRANSFER_W (10h04); // Command register W
+    uint10 FRAMEBUFFER_BASE(10h400); // Framebuffer base address
+
+    // SPIscreen (OLED) controller chip
+    // Actual SPI Driver for the OLED screen
+    uint1 display_enable(0);
+    // display_reset = oled_resn
+    oled display(
+        enable   <: display_enable,
+        oled_din :> oled_mosi,
+        oled_clk :> oled_clk,
+        oled_dc  :> oled_dc,
+        //data_or_command
+        //byte
+    );
+
+    // Hardware Framebuffer - TODO
+    uint1 hw_fb_enabled(0);
+
+    always {
+        uint10 mem_addr_ext = {mem_addr, 2b00}; // Extend to word-aligned address
+        uint1 reg_ctrl_access = (mem_addr_ext == REG_CTRL_RW);
+        uint1 reg_transfer_access = (mem_addr_ext == REG_TRANSFER_W);
+        uint1 reg_access = reg_ctrl_access | reg_transfer_access;
+        uint1 fb_access  = (mem_addr_ext >= FRAMEBUFFER_BASE);
+
+        // Handle read from GPIO peripheral
+        mem_rd_data =   reg_ctrl_access ? {30b0, hw_fb_enabled, oled_resn} :
+                        32b0;
+
+        // Handle write to GPIO peripheral
+        if ((mem_wr_en != 4b0000)) {
+            if (reg_access) {
+                // Control register write
+                oled_resn     = (mem_wr_en[0,1] & reg_ctrl_access) ? mem_wr_data[0,1] : oled_resn;
+                hw_fb_enabled = (mem_wr_en[0,1] & reg_ctrl_access) ? mem_wr_data[1] : hw_fb_enabled;
+                // TODO - Clear Hardware Framebuffer
+
+                // Transfer register write
+                display_enable = ((mem_wr_en[0,2] == 2b11) & reg_transfer_access) ? 1b1 : 1b0;
+                display.byte = (mem_wr_en[0,1] & reg_transfer_access) ? mem_wr_data[0,8] : display.byte;
+                display.data_or_command = (mem_wr_en[0,1] & reg_transfer_access) ? mem_wr_data[8] : display.data_or_command;
+            }
+            if (fb_access) {
+                // TODO: write to hardware framebuffer
+            }
+        }
+    }
+}

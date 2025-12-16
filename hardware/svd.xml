@@ -485,12 +485,12 @@
             <baseAddress>0x17c00</baseAddress>
             <addressBlock>
                 <offset>0x0</offset>
-                <size>0x04</size>
+                <size>0x08</size>
                 <usage>registers</usage>
             </addressBlock>
             <addressBlock>
-                <offset>0x04</offset>
-                <size>0x3fb</size>
+                <offset>0x08</offset>
+                <size>0x3f7</size>
                 <usage>reserved</usage>
             </addressBlock>
             <addressBlock>
@@ -508,16 +508,47 @@
                     <resetValue>0</resetValue>
                     <fields>
                         <field>
+                            <name>RESET</name>
+                            <description>Set the reset output of the Display.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                        <field>
                             <name>ENABLE_HW_FB</name>
                             <description>Enable the hardware framebuffer (will refresh at 60Hz).</description>
-                            <bitOffset>0</bitOffset>
+                            <bitOffset>1</bitOffset>
                             <bitWidth>1</bitWidth>
                             <access>read-write</access>
                         </field>
                         <field>
                             <name>CLEAR_HW_FB</name>
                             <description>Clear the Hardware Framebuffer (every cell will be null)</description>
-                            <bitOffset>7</bitOffset>
+                            <bitOffset>2</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>TRANSFER</name>
+                    <description>Send a CMD or DATA transfer to the Display.</description>
+                    <addressOffset>0x04</addressOffset>
+                    <size>16</size>
+                    <access>write-only</access>
+                    <resetValue>0</resetValue>
+                    <fields>
+                        <field>
+                            <name>BYTE</name>
+                            <description>Set the byte of data or command to send to the device.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                        <field>
+                            <name>TYPE</name>
+                            <description>Set the type of transfer (CMD or DATA). CMD = 0, DATA = 1</description>
+                            <bitOffset>8</bitOffset>
                             <bitWidth>1</bitWidth>
                             <access>write-only</access>
                         </field>

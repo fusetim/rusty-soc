@@ -20,7 +20,10 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-type TheSdCard = SdCard<ExclusiveDevice<SpiSoft<SpiSdClk, SpiSdMosi, SpiSdMiso, IntrDelay>, Pin<SpiSdCs>, IntrDelay>, IntrDelay>;
+type TheSdCard = SdCard<
+    ExclusiveDevice<SpiSoft<SpiSdClk, SpiSdMosi, SpiSdMiso, IntrDelay>, Pin<SpiSdCs>, IntrDelay>,
+    IntrDelay,
+>;
 
 #[silicon_hal::entry]
 fn main() -> ! {
@@ -49,7 +52,7 @@ fn main() -> ! {
     delay_ms(250);
     let spi_sd = ExclusiveDevice::new(spi_soft, sd_cs, INTR_DELAY).unwrap();
 
-    let mut sdcard : TheSdCard = SdCard::new(spi_sd, INTR_DELAY);
+    let mut sdcard: TheSdCard = SdCard::new(spi_sd, INTR_DELAY);
 
     let mut leds: [&mut dyn OutputPin<Error = Infallible>; 8] = [
         &mut led0, &mut led1, &mut led2, &mut led3, &mut led4, &mut led5, &mut led6, &mut led7,
@@ -133,7 +136,7 @@ pub fn set_leds(led_pins: &mut [&mut dyn OutputPin<Error = Infallible>], states:
 
 pub fn test_tone(dac: &mut dac::AudioDac, leds: &mut [&mut dyn OutputPin<Error = Infallible>]) {
     for k in 0..64 {
-        reset_leds( leds);
+        reset_leds(leds);
         leds[k & 0x07].set_high();
         for i in 0..=8 {
             unsafe { core::arch::asm!("lb x0, 18(x0)") };
@@ -162,11 +165,14 @@ impl TimeSource for ZeroTimeSource {
 }
 
 #[inline(never)]
-pub fn play_file(dac: &mut dac::AudioDac, leds: &mut [&mut dyn OutputPin<Error = Infallible>], sdcard: TheSdCard) -> TheSdCard {
+pub fn play_file(
+    dac: &mut dac::AudioDac,
+    leds: &mut [&mut dyn OutputPin<Error = Infallible>],
+    sdcard: TheSdCard,
+) -> TheSdCard {
     // Open the fat filesystem
     let volume_mgr = VolumeManager::new(sdcard, ZeroTimeSource);
-    let Ok(volume0) = volume_mgr.open_raw_volume(VolumeIdx(0)) 
-    else {
+    let Ok(volume0) = volume_mgr.open_raw_volume(VolumeIdx(0)) else {
         // Failed to open volume, indicate error via LED7
         leds[7].set_high();
         delay_ms(500);
@@ -176,8 +182,7 @@ pub fn play_file(dac: &mut dac::AudioDac, leds: &mut [&mut dyn OutputPin<Error =
     // Volume opened successfully
     leds[1].set_high();
 
-    let Ok(root_dir) = volume_mgr.open_root_dir(volume0)
-    else {
+    let Ok(root_dir) = volume_mgr.open_root_dir(volume0) else {
         // Failed to open root directory, indicate error via LED7
         leds[7].set_high();
         delay_ms(500);
