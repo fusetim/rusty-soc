@@ -9,7 +9,8 @@ edition = "2024"
 silicon-hal = { path = "../silicon-hal", features= ["rt"]}
 embedded-hal = "1"
 embedded-hal-bus = { version = "0.3.0", default-features =  false, features = [] }
-embedded-sdmmc = { path = "../embedded-sdmmc-rs", default-features = false, features = [] }
+#embedded-sdmmc = { path = "../embedded-sdmmc-rs", default-features = false, features = [] }
+embedded-sdmmc = { version = "0.9.0", default-features = false, features = [] }
 riscv-rt = { version = "0.16.0", features = ["single-hart"] }
 
 [profile.dev]

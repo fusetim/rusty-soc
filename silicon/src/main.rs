@@ -100,7 +100,7 @@ fn main() -> ! {
         delay_ms(500);
 
         // Output a test tone via DAC
-        //test_tone(&mut dac, &mut leds);
+        test_tone(&mut dac, &mut leds);
 
         // Loading a music file from SD card and playing it via DAC
         sdcard = play_file(&mut dac, &mut leds, sdcard);
@@ -188,6 +188,7 @@ pub fn play_file(dac: &mut dac::AudioDac, leds: &mut [&mut dyn OutputPin<Error =
     // Root directory opened successfully
     leds[2].set_high();
 
+    /*
     let Ok(mut my_file) = volume_mgr.open_file_in_dir(root_dir, "MY_FILE.TXT", Mode::ReadOnly) else {
         // Failed to open file, indicate error via LED7
         leds[7].set_high();
@@ -195,6 +196,8 @@ pub fn play_file(dac: &mut dac::AudioDac, leds: &mut [&mut dyn OutputPin<Error =
         leds[7].set_low();
         return volume_mgr.free().0;
     };
+
+    leds[3].set_high();*/
 
     //while !my_file.is_eof() {
     //    let mut buffer = [0u8; 32];

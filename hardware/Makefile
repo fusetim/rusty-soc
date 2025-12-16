@@ -12,6 +12,5 @@ else
 endif
 
 clean:
-	make -C firmware clean
 	rm -rf BUILD_*
 	rm -f *.lpp
