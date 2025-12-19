@@ -103,7 +103,7 @@ fn main() -> ! {
         delay_ms(500);
 
         // Output a test tone via DAC
-        test_tone(&mut dac, &mut leds);
+        //test_tone(&mut dac, &mut leds);
 
         // Loading a music file from SD card and playing it via DAC
         sdcard = play_file(&mut dac, &mut leds, sdcard);
@@ -184,43 +184,53 @@ pub fn play_file(
 
     let Ok(root_dir) = volume_mgr.open_root_dir(volume0) else {
         // Failed to open root directory, indicate error via LED7
-        leds[7].set_high();
+        leds[6].set_high();
         delay_ms(500);
-        leds[7].set_low();
+        leds[6].set_low();
         return volume_mgr.free().0;
     };
 
     // Root directory opened successfully
     leds[2].set_high();
 
-    /*
-    let Ok(mut my_file) = volume_mgr.open_file_in_dir(root_dir, "MY_FILE.TXT", Mode::ReadOnly) else {
+    
+    let Ok(my_file) = volume_mgr.open_file_in_dir(root_dir, "music.raw", Mode::ReadOnly) else {
         // Failed to open file, indicate error via LED7
-        leds[7].set_high();
+        leds[5].set_high();
         delay_ms(500);
-        leds[7].set_low();
+        leds[5].set_low();
         return volume_mgr.free().0;
     };
 
-    leds[3].set_high();*/
+    leds[3].set_high();
 
-    //while !my_file.is_eof() {
-    //    let mut buffer = [0u8; 32];
-    //    let Ok(num_read) = my_file.read(&mut buffer) else {
-    //        // Read error, indicate via LED7
-    //        leds[7].set_high();
-    //        delay_ms(500);
-    //        leds[7].set_low();
-    //        break;
-    //    };
-    //    for b in &buffer[0..num_read] {
-    //        reset_leds(leds);
-    //        delay_ms(250);
-    //        set_leds(leds, &[b & 0x01 != 0, b & 0x02 != 0, b & 0x04 != 0, b & 0x08 != 0, b & 0x10 != 0, b & 0x20 != 0, b & 0x40 != 0, b & 0x80 != 0]);
-    //        delay_ms(250);
-    //    }
-    //    reset_leds(leds);
-    //}
+    // Read to the end of the file
+    let mut buffer = [0u8; 512];
+    loop {
+        let Ok(bytes_read) = volume_mgr.read(my_file.clone(), &mut buffer) else {
+            // Read error, indicate via LED7
+            leds[7].set_high();
+            leds[6].set_high();
+            delay_ms(500);
+            leds[7].set_low();
+            leds[6].set_low();
+            break;
+        };
+        if bytes_read == 0 {
+            // End of file reached
+            break;
+        }
+
+        // Process the read data (e.g., send to DAC)
+        let mut i = 0;
+        while i < bytes_read {
+            dac.write_left_sample(buffer[i]);
+            i+=1;
+        }
+    }
+    
+    dac.write_stereo_sample(0, 0);
+    reset_leds(leds);
     leds[4].set_high();
 
     volume_mgr.free().0

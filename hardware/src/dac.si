@@ -13,7 +13,7 @@ unit dac(
 
   always {
     // count cycles
-    cycle = cycle == 249 ? 0 : cycle + 1;
+    cycle = (cycle == 249) ? 0 : cycle + 1;
 
     // audio_in is 8bit: 0-255 for 0V to max voltage
     // as a first approach, we can simply map

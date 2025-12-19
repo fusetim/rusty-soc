@@ -51,9 +51,9 @@ $$if AUDIO then
     output uint4 audio_l,
     output uint4 audio_r,
 $$end
-    output! uint1 oled_clk,
-    output! uint1 oled_mosi,
-    output! uint1 oled_dc,
+    output uint1 oled_clk,
+    output uint1 oled_mosi,
+    output uint1 oled_dc,
     output! uint1 oled_resn,
     output! uint1 oled_csn(0),
 $$if VERILATOR then
@@ -189,7 +189,7 @@ $$end
         oled_dc     :> oled_dc,
         oled_resn   :> oled_resn,
         oled_csn    :> oled_csn
-    )
+    );
 
     // -- End of Peripherals -- //
 
@@ -242,11 +242,11 @@ $$end
         dac.mem_wr_en   = prev_mem_rw;
 
         // Display signals for OLED when Hardware Framebuffer is disabled
-        oled_csn  = gpio_oled_csn;
-        oled_mosi = gpio_oled_mosi;
-        oled_clk  = gpio_oled_clk;
-        oled_dc   = gpio_oled_dc;
-        oled_resn = gpio_oled_resn;
+        //oled_csn  = gpio_oled_csn;
+        //oled_mosi = gpio_oled_mosi;
+        //oled_clk  = gpio_oled_clk;
+        //oled_dc   = gpio_oled_dc;
+        //oled_resn = gpio_oled_resn;
 
         // Memory Interface
         memio.rdata =   (~peripheral_en ? ram.rdata : 32b0)

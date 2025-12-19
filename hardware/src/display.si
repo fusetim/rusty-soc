@@ -1,6 +1,6 @@
 $$ OLED_SLOW=1
 // Includes the SPIscreen driver
-$include('../../lib/silice/projects/ice-v/SOCs/ice-v-oled.si')
+$include('../lib/silice/projects/ice-v/SOCs/ice-v-oled.si')
 
 /// Display Peripheral
 ///
@@ -14,9 +14,9 @@ unit display_peripheral(
     input  uint4        mem_wr_en,
     output! uint32      mem_rd_data(32b0),
     // OLED Display SPI interface
-    output! uint1 oled_clk,
-    output! uint1 oled_mosi,
-    output! uint1 oled_dc,
+    output uint1 oled_clk,
+    output uint1 oled_mosi,
+    output uint1 oled_dc,
     output! uint1 oled_resn,
     output! uint1 oled_csn(0),
 ) {
@@ -57,13 +57,13 @@ unit display_peripheral(
             if (reg_access) {
                 // Control register write
                 oled_resn     = (mem_wr_en[0,1] & reg_ctrl_access) ? mem_wr_data[0,1] : oled_resn;
-                hw_fb_enabled = (mem_wr_en[0,1] & reg_ctrl_access) ? mem_wr_data[1] : hw_fb_enabled;
+                hw_fb_enabled = (mem_wr_en[0,1] & reg_ctrl_access) ? mem_wr_data[1,1] : hw_fb_enabled;
                 // TODO - Clear Hardware Framebuffer
 
                 // Transfer register write
                 display_enable = ((mem_wr_en[0,2] == 2b11) & reg_transfer_access) ? 1b1 : 1b0;
                 display.byte = (mem_wr_en[0,1] & reg_transfer_access) ? mem_wr_data[0,8] : display.byte;
-                display.data_or_command = (mem_wr_en[0,1] & reg_transfer_access) ? mem_wr_data[8] : display.data_or_command;
+                display.data_or_command = (mem_wr_en[0,1] & reg_transfer_access) ? mem_wr_data[8,1] : display.data_or_command;
             }
             if (fb_access) {
                 // TODO: write to hardware framebuffer
