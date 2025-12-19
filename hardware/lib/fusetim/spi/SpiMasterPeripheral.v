@@ -99,9 +99,9 @@ module SpiMasterPeripheral #(
         end else begin
             // Handle writes
             if (|mem_wr_en) begin
-                start <=    (mem_addr_ext == REG_CONTROL && mem_wr_en[0] && mem_wr_data[0]) ? 1'b1 : // CONTROL - start bit
-                            (mem_addr_ext == REG_WRITE_DATA && mem_wr_en[0]) ? 1'b1 : // WRITE_DATA - start transfer on write
-                            start; // retain previous value
+                start <=    (~busy && mem_addr_ext == REG_CONTROL && mem_wr_en[0] && mem_wr_data[0]) ? 1'b1 : // CONTROL - start bit
+                            (~busy && mem_addr_ext == REG_WRITE_DATA && mem_wr_en[0]) ? 1'b1 : // WRITE_DATA - start transfer on write
+                            busy ? 1'b0 : start; // retain previous value -- clear start if busy
                 soft_reset <= (mem_addr_ext == REG_CONTROL && mem_wr_en[0] && mem_wr_data[1]) ? 1'b1 : 1'b0; // CONTROL - reset bit
                 if (mem_addr_ext == REG_WRITE_DATA && mem_wr_en[0]) begin
                     tx_data <= mem_wr_data[7:0];
@@ -116,14 +116,6 @@ module SpiMasterPeripheral #(
             // (Assuming SpiMaster module has a soft reset input, not shown here)
             // This is a placeholder; actual implementation may vary.
             soft_reset <= 1'b0;
-        end
-        if (start) begin 
-            // Start signal is only sampled on rclk rising edge
-            start <= 1'b0; // Clear start after sampling
-            debug_tx <= tx_data;
-        end
-        if (ready) begin
-            debug_rx <= rx_data;
         end
     end
 

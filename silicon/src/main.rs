@@ -9,7 +9,7 @@ use silicon_hal::dac;
 use silicon_hal::delay::IntrDelay;
 use silicon_hal::gpio::Pin;
 use silicon_hal::gpio::spi_sdcard_bank::{SpiSdClk, SpiSdCs, SpiSdMiso, SpiSdMosi};
-use silicon_hal::spi::SpiSoft;
+use silicon_hal::spi::{Spi, Spi0, SpiSoft};
 use silicon_hal::{
     delay::{DelayNs, INTR_DELAY},
     gpio::IntoPin as _,
@@ -20,8 +20,15 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+/*  SOFT SPI
 type TheSdCard = SdCard<
     ExclusiveDevice<SpiSoft<SpiSdClk, SpiSdMosi, SpiSdMiso, IntrDelay>, Pin<SpiSdCs>, IntrDelay>,
+    IntrDelay,
+>;
+*/
+// HARD SPI
+type TheSdCard = SdCard<
+    ExclusiveDevice<Spi<Spi0>, Pin<SpiSdCs>, IntrDelay>,
     IntrDelay,
 >;
 
@@ -44,13 +51,19 @@ fn main() -> ! {
             led7.into_pin(),
         )
     };
-    let spi_sd = peripherals.gpio.take_spi_sd().unwrap();
     let mut sd_cs = peripherals.gpio.take_spi_sd_cs().unwrap().into_pin();
+    /* SOFT SPI
+    let spi_sd: silicon_hal::gpio::SpiPins<SpiSdMosi, SpiSdClk, SpiSdMiso> = peripherals.gpio.take_spi_sd().unwrap();
     let spi_soft = SpiSoft::new(spi_sd, INTR_DELAY);
-
     sd_cs.set_high();
     delay_ms(250);
     let spi_sd = ExclusiveDevice::new(spi_soft, sd_cs, INTR_DELAY).unwrap();
+    */
+    // HARD SPI
+    let spi_hard = Spi::new(peripherals.spi0);
+    sd_cs.set_high();
+    delay_ms(250);
+    let spi_sd = ExclusiveDevice::new(spi_hard, sd_cs, INTR_DELAY).unwrap();
 
     let mut sdcard: TheSdCard = SdCard::new(spi_sd, INTR_DELAY);
 

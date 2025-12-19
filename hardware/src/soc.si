@@ -51,11 +51,11 @@ $$if AUDIO then
     output uint4 audio_l,
     output uint4 audio_r,
 $$end
-    output uint1 oled_clk,
-    output uint1 oled_mosi,
-    output uint1 oled_dc,
+    output! uint1 oled_clk,
+    output! uint1 oled_mosi,
+    output! uint1 oled_dc,
     output! uint1 oled_resn,
-    output! uint1 oled_csn(0),
+    output! uint1 oled_csn(1),
 $$if VERILATOR then
     // configuration for SPIscreen simulation
     output uint2  spiscreen_driver(1/*SSD1351*/),
@@ -108,11 +108,6 @@ $$end
     // GPIO Peripheral
     uint1 gpio_en(0);
     uint1 gpio_rst(0);
-    uint1 gpio_oled_csn(0);     // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
-    uint1 gpio_oled_mosi(0);    // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
-    uint1 gpio_oled_clk(0);     // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
-    uint1 gpio_oled_dc(0);      // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
-    uint1 gpio_oled_resn(0);    // GPIO - OLED (only connected when Hardware Framebuffer is Disabled)
     gpio_peripheral gpio(
         rst <: gpio_rst, // no reset for now
         // Memory-mapped I/O interface
@@ -125,28 +120,30 @@ $$end
         leds        :> leds,
         btns        <: btns,
         // SPI - SD Card
-        sd_cs       :> sd_csn,
-        sd_mosi     :> sd_mosi,
-        sd_clk      :> sd_clk,
-        sd_miso     <: sd_miso,
+        //sd_cs       :> sd_csn,
+        //sd_mosi     :> sd_mosi,
+        //sd_clk      :> sd_clk,
+        //sd_miso     <: sd_miso,
         // SPI - OLED Display
-        oled_cs     :> gpio_oled_csn,
-        oled_mosi   :> gpio_oled_mosi,
-        oled_clk    :> gpio_oled_clk,
-        oled_dc     :> gpio_oled_dc,
-        oled_res    :> gpio_oled_resn,
+        //oled_cs     :> oled_csn,
+        //oled_mosi   :> oled_mosi,
+        //oled_clk    :> oled_clk,
+        //oled_dc     :> oled_dc,
+        //oled_res    :> oled_resn,
+
+        // -- TESTING SD SPI SIGNALS -- //
+        sd_cs :> oled_csn,
+        // sd_mosi :> oled_mosi,
+        // sd_clk :> oled_clk
+        // -- END TESTING SD SPI SIGNALS -- //
     );
 
     // SPI Peripherals
-    /* TODO
+    
     uint1 spi0_en(0);
     uint1 spi0_rst(0);
     uint1 spi0_rclk(0);
     uint8 spi0_clk_cntr(0);
-    $$if SIMULATION then
-    uint1 spi0_busy(0);
-    uint1 spi0_ready(0);
-    $$end
     spi_peripheral spi0(
         rclk       <: spi0_rclk,
         rst        <: spi0_rst,
@@ -154,15 +151,11 @@ $$end
         //mem_wr_data(prev_wdata),
         //mem_wr_en  (prev_mem_rw),
         //mem_rd_data(spi0.mem_rd_data),
-        spi_clk    :> sd_clk,
-        spi_mosi   :> sd_mosi,
+        spi_clk    :> oled_clk,
+        spi_mosi   :> oled_mosi,
         spi_miso   <: sd_miso,
-        $$if SIMULATION then
-            debug_busy :> spi0_busy,
-            debug_ready :> spi0_ready,
-        $$end
     );
-    */
+    
 
     // DAC Peripheral for Audio Output
     uint1 dac_en(0);
@@ -184,11 +177,11 @@ $$end
         // mem_wr_data <: prev_wdata,
         // mem_wr_en   <: prev_mem_rw,
         // OLED Display SPI interface
-        oled_clk    :> oled_clk,
-        oled_mosi   :> oled_mosi,
-        oled_dc     :> oled_dc,
-        oled_resn   :> oled_resn,
-        oled_csn    :> oled_csn
+        // oled_clk    :> oled_clk,
+        // oled_mosi   :> oled_mosi,
+        // oled_dc     :> oled_dc,
+        // oled_resn   :> oled_resn,
+        // oled_csn    :> oled_csn
     );
 
     // -- End of Peripherals -- //
@@ -205,9 +198,7 @@ $$end
     always { 
         // SPI rclk generation (for SPI0 peripheral)
         // Generate a clock at ~400kHz from the main clock (assumed 25MHz)
-        /*
-        spi0_clk_cntr = spi0_clk_cntr + 1;
-        if (spi0_clk_cntr == 63) { // 25MHz / 64 = 390.625kHz
+        if (spi0_clk_cntr == 12) { // 25MHz / 64 = 390.625kHz
             spi0_clk_cntr = 0;
             spi0_rclk     = ~spi0_rclk;
             $$if SIMULATION then
@@ -215,14 +206,16 @@ $$end
                 //    __display("[cycle %d] SPI0 RCLK=%b BUSY=%b READY=%b, SPI_CLK=%b, MOSI=%b, MISO=%b", cycle, spi0_rclk, spi0_busy, spi0_ready, sd_clk, sd_mosi, sd_miso);
                 //}
             $$end
+        } else {
+            spi0_clk_cntr = spi0_clk_cntr + 1;
         }
-        */
+        
 
         // Peripheral enable signals
         uint1 peripheral_en = prev_mem_addr[$periph_bit$,1]; // 100000000000000
         gpio_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000001); // GPIO at 0x10400 = 0b100000100000000
-        dac_en  = peripheral_en & (prev_mem_addr[8, 6] == 6b000010); // DAC at 0x10800 = 0b100001000000000
-        //spi0_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000011); // SPI0 at 0x10C00 = 0b100001100000000
+        dac_en  = peripheral_en & (prev_mem_addr[8, 6] == 6b000010); // DAC at 0x10800  = 0b100001000000000
+        spi0_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000011); // SPI0 at 0x10C00 = 0b100001100000000
 
         // GPIO Peripheral memory-mapped I/O access
         gpio.mem_addr    = prev_mem_addr[0,8];
@@ -230,28 +223,21 @@ $$end
         gpio.mem_wr_en   = prev_mem_rw;
 
         // SPI0 Peripheral memory-mapped I/O access
-        /* TODO
+        
         spi0.mem_addr    = prev_mem_addr[0,8];
         spi0.mem_wr_data = prev_wdata;
         spi0.mem_wr_en   = prev_mem_rw;
-        */
+
 
         // DAC Peripheral memory-mapped I/O access
         dac.mem_addr    = prev_mem_addr[0,8];
         dac.mem_wr_data = prev_wdata;
         dac.mem_wr_en   = prev_mem_rw;
 
-        // Display signals for OLED when Hardware Framebuffer is disabled
-        //oled_csn  = gpio_oled_csn;
-        //oled_mosi = gpio_oled_mosi;
-        //oled_clk  = gpio_oled_clk;
-        //oled_dc   = gpio_oled_dc;
-        //oled_resn = gpio_oled_resn;
-
         // Memory Interface
         memio.rdata =   (~peripheral_en ? ram.rdata : 32b0)
-                        | (peripheral_en & gpio_en ? gpio.mem_rd_data : 32b0);
-                        // TODO : | (peripheral_en & spi0_en ? spi0.mem_rd_data : 32b0);
+                        | (peripheral_en & gpio_en ? gpio.mem_rd_data : 32b0)
+                        | (peripheral_en & spi0_en ? spi0.mem_rd_data : 32b0);
         ram.wenable = memio.wenable & {4{~memio.addr[$periph_bit$,1]}};
         //                               ^^^^^^^ no write if on peripheral addresses
         ram.wdata        = memio.wdata;
