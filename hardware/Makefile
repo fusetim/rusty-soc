@@ -7,6 +7,8 @@ OUTPUT_DIR ?= BUILD
 soc: src/soc.si
 ifeq ($(BOARD),verilator)
 	silice-make.sh -s src/soc.si -b $(BOARD) -p basic,oled -o $(OUTPUT_DIR) $(ARGS)
+else ifeq ($(BOARD),icarus)
+	silice-make.sh -s src/soc.si -b $(BOARD) -p basic -o $(OUTPUT_DIR) $(ARGS)
 else
 	silice-make.sh -s src/soc.si -b $(BOARD) -p basic,audio,oled,buttons,sdcard -o $(OUTPUT_DIR) $(ARGS)
 endif

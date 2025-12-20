@@ -28,7 +28,7 @@ type TheSdCard = SdCard<
 */
 // HARD SPI
 type TheSdCard = SdCard<
-    ExclusiveDevice<Spi<Spi0>, Pin<SpiSdCs>, IntrDelay>,
+    ExclusiveDevice<Spi<Spi0, IntrDelay>, Pin<SpiSdCs>, IntrDelay>,
     IntrDelay,
 >;
 
@@ -60,8 +60,9 @@ fn main() -> ! {
     let spi_sd = ExclusiveDevice::new(spi_soft, sd_cs, INTR_DELAY).unwrap();
     */
     // HARD SPI
-    let spi_hard = Spi::new(peripherals.spi0);
+    let mut spi_hard = Spi::new(peripherals.spi0, INTR_DELAY);
     sd_cs.set_high();
+    spi_hard.initialize();
     delay_ms(250);
     let spi_sd = ExclusiveDevice::new(spi_hard, sd_cs, INTR_DELAY).unwrap();
 

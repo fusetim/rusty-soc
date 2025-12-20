@@ -3,6 +3,7 @@ use core::convert::Infallible;
 use crate::gpio::{InputCapablePin, OutputCapablePin, SpiPins};
 use crate::pac::{self, Spi0 as PacSpi0};
 use crate::typesafe::Sealed;
+use embedded_hal::delay::DelayNs;
 use embedded_hal::spi::{ErrorType, SpiBus, SpiDevice};
 
 pub trait SpiPeripheral: Sealed + 'static {
@@ -10,8 +11,9 @@ pub trait SpiPeripheral: Sealed + 'static {
     fn get_perif() -> &'static pac::spi0::RegisterBlock;
 }
 
-pub struct Spi<P: SpiPeripheral> {
+pub struct Spi<P: SpiPeripheral, D: DelayNs> {
     peripheral: P,
+    delayer: D,
 }
 
 pub struct Spi0 {
@@ -33,12 +35,25 @@ impl SpiPeripheral for Spi0 {
     }
 }
 
-impl<P> Spi<P>
+impl<P, D> Spi<P, D>
 where
     P: SpiPeripheral,
+    D: DelayNs,
 {
-    pub fn new(peripheral: P) -> Self {
-        Self { peripheral }
+    pub fn new(peripheral: P, delayer: D) -> Self {
+        Self { peripheral , delayer }
+    }
+
+    /// Initialize the SPI peripheral with default settings
+    pub fn initialize(&mut self) {
+        // The SPI hardware peripheral needs to be hold in reset (for 3 microseconds)
+        // before being used. This is what this initialization function does.
+        let spi = P::get_perif();
+        // Put SPI peripheral into reset
+        spi.ctrl().write(|w| w.reset().set_bit());
+        self.delayer.delay_ms(3);
+        // Release SPI peripheral from reset
+        spi.ctrl().write(|w| w.reset().clear_bit());
     }
 
     pub fn bring_down(self) -> P {
@@ -46,16 +61,18 @@ where
     }
 }
 
-impl<P> ErrorType for Spi<P>
+impl<P, D> ErrorType for Spi<P, D>
 where
     P: SpiPeripheral,
+    D: DelayNs,
 {
     type Error = Infallible;
 }
 
-impl<P> SpiBus<u8> for Spi<P>
+impl<P, D> SpiBus<u8> for Spi<P, D>
 where
     P: SpiPeripheral,
+    D: DelayNs,
 {
     #[inline(always)]
     fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
@@ -75,6 +92,8 @@ where
             // Write the Tx byte to send, this will also start the transfer
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(word) });
+            // Wait a bit for the first bits to be sent - for 500MHz - 4 microseconds should be enough
+            self.delayer.delay_us(4);
         }
         Ok(())
     }
@@ -88,6 +107,8 @@ where
             // Write the Tx byte to send, this will also start the transfer
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(write[i]) });
+            // Wait a bit for the first bits to be sent - for 500MHz - 4 microseconds should be enough
+            self.delayer.delay_us(4);
             // Wait until data is ready
             loop {
                 let read_and_status = spi.read_and_status().read();
@@ -115,6 +136,8 @@ where
             // Write the Tx byte to send, this will also start the transfer
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(*word) });
+            // Wait a bit for the first bits to be sent - for 500MHz - 4 microseconds should be enough
+            self.delayer.delay_us(4);
             // Wait until data is ready
             loop {
                 let read_and_status = spi.read_and_status().read();

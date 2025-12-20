@@ -49,9 +49,9 @@ module SpiMaster #(
     localparam STATE_TRANSFER_READ = 2'b11;
 
     // Internal state register
-    reg [1:0] state;
+    reg [1:0] state = STATE_IDLE;
     // Bit counter (number of bits already transferred)
-    reg [2:0] bit_cnt;
+    reg [2:0] bit_cnt = 3'b0;
 
     // State machine
     always @(posedge rclk or posedge rst) begin
@@ -106,7 +106,7 @@ module SpiMaster #(
     end
 
     // SPI clock generation
-    assign spi_clk = rst ? CPOL : (state == STATE_TRANSFER_READ ? ~CPOL : CPOL);
+    assign spi_clk = rst ? CPOL : (state == STATE_TRANSFER_READ ? (1'b1 - CPOL) : CPOL);
     // SPI MOSI output -- shift out the MSB first
     assign spi_mosi = tx_buffer[7];
 

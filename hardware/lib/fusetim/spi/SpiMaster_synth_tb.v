@@ -51,7 +51,7 @@ module SpiMaster_tb ();
     // Test sequence
     initial begin
         // Initialize waveform dump
-        $dumpfile("./SpiMaster.vcd");
+        $dumpfile("./SpiMaster_synth.vcd");
         $dumpvars(-1, SpiMaster_tb);
         $dumpon();
 

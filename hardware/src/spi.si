@@ -14,12 +14,10 @@ unit spi_peripheral(
     output! uint1 spi_clk,
     output! uint1 spi_mosi,
     input   uint1 spi_miso,
-    $$if SIMULATION then
-        output! uint1 debug_busy(0),
-        output! uint1 debug_ready(0),
-        output! uint8 debug_tx(0),
-        output! uint8 debug_rx(0),
-    $$end
+    output! uint1 debug_busy(0),
+    output! uint1 debug_ready(0),
+    output! uint8 debug_tx(0),
+    output! uint8 debug_rx(0),
 ) {
 
     SpiMasterPeripheral spi(
@@ -35,12 +33,11 @@ unit spi_peripheral(
         spi_clk  :> spi_clk,
         spi_mosi :> spi_mosi,
         spi_miso <: spi_miso,
-        $$if SIMULATION then
-            debug_busy :> debug_busy,
-            debug_ready :> debug_ready,
-            debug_tx :> debug_tx,
-            debug_rx :> debug_rx,
-        $$end
+        // Debug signals
+        debug_busy :> debug_busy,
+        debug_ready :> debug_ready,
+        debug_tx :> debug_tx,
+        debug_rx :> debug_rx,
     );
 
     always {
