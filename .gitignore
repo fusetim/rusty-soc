@@ -8,3 +8,4 @@ BUILD/
 *.vcd
 *.ghw
 *.out
+*.raw
