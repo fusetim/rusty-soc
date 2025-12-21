@@ -32,7 +32,7 @@ type TheSdCard = SdCard<ExclusiveDevice<Spi<Spi0, IntrDelay>, Pin<SpiSdCs>, Intr
 
 const JINGLE: &'static [u8] = include_bytes!("../music.raw");
 
-/*
+
 #[silicon_hal::entry]
 fn main() -> ! {
     let mut peripherals = silicon_hal::init();
@@ -124,69 +124,6 @@ fn main() -> ! {
         sdcard = play_file(&mut audio_streamer, &mut leds, sdcard);
     }
 }
-*/
-
-/// TESTING - AUDIO STREAMING ONLY
-#[silicon_hal::entry]
-fn main() -> ! {
-    let mut peripherals = silicon_hal::init();
-
-    let mut leds: [&mut dyn OutputPin<Error = Infallible>; 8] = {
-        let (led0, led1, led2, led3, led4, led5, led6, led7) =
-            peripherals.gpio.take_all_leds().unwrap();
-        [
-            &mut led0.into_pin(),
-            &mut led1.into_pin(),
-            &mut led2.into_pin(),
-            &mut led3.into_pin(),
-            &mut led4.into_pin(),
-            &mut led5.into_pin(),
-            &mut led6.into_pin(),
-            &mut led7.into_pin(),
-        ]
-    };
-
-    let mut btns : [&mut dyn InputPin<Error = Infallible>; 6] = {
-        let (btn1, btn2, btn3, btn4, btn5, btn6) = peripherals.gpio.take_all_btns().unwrap();
-        [
-            &mut btn1.into_pin(),
-            &mut btn2.into_pin(),
-            &mut btn3.into_pin(),
-            &mut btn4.into_pin(),
-            &mut btn5.into_pin(),
-            &mut btn6.into_pin(),
-        ]
-    };
-
-    // Audio
-    let dac = peripherals.dac;
-    let mut audio_streamer = AudioStreamer::new_mono(dac).initialize();
-
-    loop {
-        // Init the LEDs
-        reset_leds(&mut leds);
-
-        leds[0].set_high();
-        delay_ms(1000);
-        leds[0].set_low();
-
-        // Play the jingle from included bytes
-        let mut tx = 0;
-        while tx < JINGLE.len() {
-            tx += audio_streamer.write_samples(&JINGLE[tx..JINGLE.len()]);
-            leds[5].set_high();
-            delay_ms(1);
-            leds[5].set_low();
-        }
-
-        // Wait for btn1 to be pressed
-        loop {
-            if btns[0].is_high().unwrap() {
-                break;
-            }
-        }
-    }
-}
 
 pub fn to_pin_state(state: bool) -> PinState {
     if state { PinState::High } else { PinState::Low }
@@ -249,7 +186,7 @@ pub fn play_file(
     sdcard: TheSdCard,
 ) -> TheSdCard {
     // Open the fat filesystem
-    let volume_mgr = VolumeManager::new(sdcard, ZeroTimeSource);
+    let volume_mgr : VolumeManager<_,_, 1, 1, 1> = VolumeManager::new_with_limits(sdcard, ZeroTimeSource, 0);
     let Ok(volume0) = volume_mgr.open_raw_volume(VolumeIdx(0)) else {
         // Failed to open volume, indicate error via LED7
         leds[7].set_high();
@@ -271,11 +208,13 @@ pub fn play_file(
     // Root directory opened successfully
     leds[2].set_high();
 
+   
     let Ok(my_file) = volume_mgr.open_file_in_dir(root_dir, "music.raw", Mode::ReadOnly) else {
         // Failed to open file, indicate error via LED7
         leds[5].set_high();
         delay_ms(500);
         leds[5].set_low();
+        volume_mgr.close_dir(root_dir);
         return volume_mgr.free().0;
     };
 
@@ -311,6 +250,8 @@ pub fn play_file(
     let _ = streamer.write_sample(0);
     reset_leds(leds);
     leds[4].set_high();
-
+    
+    delay_ms(1000);
+    volume_mgr.close_dir(root_dir);
     volume_mgr.free().0
 }

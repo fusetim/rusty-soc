@@ -19,7 +19,7 @@ unit audio_streamer_peripheral(
     uint10 REG_DATA_W(10h04);     // Data Write
 
     // Control register bits
-    uint1 control_enable(1);       // Bit 0: Enable audio streaming
+    uint1 control_enable(0);       // Bit 0: Enable audio streaming
     uint1 control_stereo(0);       // Bit 1: Stereo (1) / Mono (0) mode
     // Internal data register sync
     uint8 ctrl_data_wid(8h00); // On write on register DATA, a Write-ID must be provided (only when this ID changes, the data will accounted in the buffer)
@@ -76,7 +76,7 @@ unit audio_streamer_peripheral(
         // Handle write to registers
         if (mem_wr_en != 4b0000) {
             // Handle write to control register
-            // control_enable = (access_reg_ctrl & mem_wr_en[0,1]) ? mem_wr_data[0,1] : control_enable;
+            control_enable = (access_reg_ctrl & mem_wr_en[0,1]) ? mem_wr_data[0,1] : control_enable;
             control_stereo = (access_reg_ctrl & mem_wr_en[0,1]) ? mem_wr_data[1,1] : control_stereo;
 
             // Handle write to data register

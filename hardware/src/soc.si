@@ -249,23 +249,23 @@ $$end
         // GPIO Peripheral memory-mapped I/O access
         gpio.mem_addr    = prev_mem_addr[0,8];
         gpio.mem_wr_data = prev_wdata;
-        gpio.mem_wr_en   = prev_mem_rw;
+        gpio.mem_wr_en   = gpio_en ? prev_mem_rw : 4b0000; // only write when enabled
 
         // SPI0 Peripheral memory-mapped I/O access
         
         spi0.mem_addr    = prev_mem_addr[0,8];
         spi0.mem_wr_data = prev_wdata;
-        spi0.mem_wr_en   = prev_mem_rw;
+        spi0.mem_wr_en   = spi0_en ? prev_mem_rw : 4b0000; // only write when enabled
 
         // DAC Peripheral memory-mapped I/O access
         dac.mem_addr    = prev_mem_addr[0,8];
         dac.mem_wr_data = prev_wdata;
-        dac.mem_wr_en   = prev_mem_rw;
+        dac.mem_wr_en   = dac_en ? prev_mem_rw : 4b0000; // only write when enabled
 
         // Audio Streamer Peripheral memory-mapped I/O access
         audio_streamer.mem_addr    = prev_mem_addr[0,8];
         audio_streamer.mem_wr_data = prev_wdata;
-        audio_streamer.mem_wr_en   = prev_mem_rw;
+        audio_streamer.mem_wr_en   = audio_streamer_mem_en ? prev_mem_rw : 4b0000; // only write when enabled
 
         // Memory Interface
         memio.rdata =   (~peripheral_en ? ram.rdata : 32b0)
