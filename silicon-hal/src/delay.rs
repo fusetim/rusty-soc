@@ -85,9 +85,14 @@ impl DelayNs for Timer0Delay {
             unsafe { core::arch::asm!("nop") };
             return;
         }
+        if ns < 1024 {
+            // Less than 1024 ns, round up to 1 us
+            self.delay_us(1);
+            return;
+        }
 
         let timer = Timer::new_timer0();
-        timer.delay_us(ns / 1000);
+        timer.delay_us(ns >> 10);
     }
 
     #[inline(always)]

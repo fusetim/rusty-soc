@@ -93,7 +93,7 @@ where
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(word) });
             // Wait a bit for the first bits to be sent - for 500MHz - 4 microseconds should be enough
-            self.delayer.delay_us(4);
+            self.delayer.delay_ns(100);
         }
         Ok(())
     }
@@ -108,7 +108,7 @@ where
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(write[i]) });
             // Wait a bit for the first bits to be sent - for 500MHz - 4 microseconds should be enough
-            self.delayer.delay_us(4);
+            self.delayer.delay_ns(100);
             // Wait until data is ready
             loop {
                 let read_and_status = spi.read_and_status().read();
@@ -137,7 +137,7 @@ where
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(*word) });
             // Wait a bit for the first bits to be sent - for 500MHz - 4 microseconds should be enough
-            self.delayer.delay_us(4);
+            self.delayer.delay_ns(100);
             // Wait until data is ready
             loop {
                 let read_and_status = spi.read_and_status().read();

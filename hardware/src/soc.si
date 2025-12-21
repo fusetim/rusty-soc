@@ -13,6 +13,7 @@ $include('./gpio.si')
 // -- DEBUG -- $ include('./spi.si')
 append('../lib/fusetim/spi/SpiMaster.v')
 import('../lib/fusetim/spi/SpiMasterPeripheral.v')
+import('./spi_pll.v')
 // Includes the DAC peripheral
 $include('./dac.si')
 // Includes the DISPLAY peripheral
@@ -29,21 +30,6 @@ $$periph_bit = addrW-1
 // Configure BRAM (needed for write mask)
 $$config['bram_wmask_byte_wenable_width'] = 'data'
 
-unit clk_div (
-    output! uint1 clk_out(0)
-) {
-    uint8 counter(0);
-
-    always {
-        if (counter == 31) {
-            counter = 0;
-            clk_out = ~clk_out;
-        } else {
-            counter = counter + 1;
-        }
-    }
-}
-
 // Memory interface between SOC and CPU
 group mem_io
 {
@@ -58,7 +44,7 @@ group mem_io
 // --------------------------------------------------
 //   some input/outputs do not exist in simulation and
 //   are therefore enclosed in pre-processor conditions
-unit main(
+unit main (
     output uint8 leds,
 $$if BUTTONS then
     input  uint7 btns,
@@ -71,7 +57,7 @@ $$end
     output! uint1 oled_mosi,
     output! uint1 oled_dc,
     output! uint1 oled_resn,
-    output! uint1 oled_csn(0),
+    output uint1 oled_csn(0),
 $$if VERILATOR then
     // configuration for SPIscreen simulation
     output uint2  spiscreen_driver(1/*SSD1351*/),
@@ -84,7 +70,8 @@ $$if SDCARD then
     output!  uint1  sd_mosi,
     input   uint1  sd_miso,
 $$end
-) {
+)
+{
 
 // -- Fallbacks for simulation -- //
 $$if SIMULATION then
@@ -148,9 +135,9 @@ $$end
         //oled_res    :> oled_resn,
 
         // -- TESTING SD SPI SIGNALS -- //
-        sd_cs :> oled_csn,
-        // sd_mosi :> oled_mosi,
-        // sd_clk :> oled_clk
+        sd_cs :> sd_csn,
+        // sd_mosi :> sd_mosi,
+        // sd_clk :> sd_clk
         // -- END TESTING SD SPI SIGNALS -- //
     );
 
@@ -158,9 +145,16 @@ $$end
     
     uint1 spi0_en(0);
     uint1 spi0_rst(0);
-    uint1 spi0_rclk(0);
-    clk_div spi0_clk_div  (
-        clk_out :> spi0_rclk
+    uint1 spi0_rclk = 0;
+    uint1 spi0_pll_rst(1);
+    spi_pll spi0_pll(
+        clk_25 <: clock,
+        rst_n <: spi0_pll_rst,
+        // Output clocks - Select one (apparently our SD card supports SPI 40MHz ~ 500kB/s (rclk = 80MHz) without init issues)
+        //clk_160 :> spi0_rclk,
+        clk_80 :> spi0_rclk,
+        //clk_10 :> spi0_rclk,
+        //clk_5 :> spi0_rclk,
     );
     SpiMasterPeripheral spi0(
         clk        <: clock,
@@ -170,10 +164,10 @@ $$end
         //mem_wr_data(prev_wdata),
         //mem_wr_en  (prev_mem_rw),
         //mem_rd_data(spi0.mem_rd_data),
-        spi_clk    :> oled_clk,
-        spi_mosi   :> oled_mosi,
+        spi_clk    :> sd_clk,
+        spi_mosi   :> sd_mosi,
         spi_miso   <: sd_miso,
-        debug_busy :> oled_resn, // TEMPORARY DEBUG
+        //debug_busy :> oled_resn, // TEMPORARY DEBUG
     );
     
 
@@ -216,15 +210,12 @@ $$end
 
 
     always { 
-        // SPI rclk generation (for SPI0 peripheral)
-        // Generate a clock at ~400kHz from the main clock (assumed 25MHz)
-        //if (spi0_clk_cntr == 12) { // 25MHz / 64 = 390.625kHz
-        //    spi0_clk_cntr = 0;
-        //    spi0_rclk     = ~spi0_rclk;
-        //} else {
-        //    spi0_clk_cntr = spi0_clk_cntr + 1;
-        //}
-        //oled_dc := spi0_rclk; // TEMPORARY DEBUG
+        // DEBUG
+        oled_clk := sd_clk; 
+        oled_mosi := sd_mosi;
+        oled_dc = sd_miso;
+        oled_csn := sd_csn;
+        oled_resn := spi0_rclk;
 
         // Peripheral enable signals
         uint1 peripheral_en = prev_mem_addr[$periph_bit$,1]; // 100000000000000
