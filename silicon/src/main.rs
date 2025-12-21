@@ -2,14 +2,15 @@
 #![no_main]
 use core::convert::Infallible;
 
-use embedded_hal::digital::{ErrorType, OutputPin, PinState};
+use embedded_hal::digital::{InputPin, OutputPin, PinState};
 use embedded_hal_bus::spi::ExclusiveDevice;
-use embedded_sdmmc::{Mode, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager, sdcard};
-use silicon_hal::dac;
+use embedded_sdmmc::{Mode, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
+use silicon_hal::audio::AudioStreamer;
 use silicon_hal::delay::IntrDelay;
 use silicon_hal::gpio::Pin;
-use silicon_hal::gpio::spi_sdcard_bank::{SpiSdClk, SpiSdCs, SpiSdMiso, SpiSdMosi};
-use silicon_hal::spi::{Spi, Spi0, SpiSoft};
+use silicon_hal::gpio::spi_sdcard_bank::SpiSdCs;
+use silicon_hal::spi::{Spi, Spi0};
+use silicon_hal::{audio, dac};
 use silicon_hal::{
     delay::{DelayNs, INTR_DELAY},
     gpio::IntoPin as _,
@@ -27,30 +28,31 @@ type TheSdCard = SdCard<
 >;
 */
 // HARD SPI
-type TheSdCard = SdCard<
-    ExclusiveDevice<Spi<Spi0, IntrDelay>, Pin<SpiSdCs>, IntrDelay>,
-    IntrDelay,
->;
+type TheSdCard = SdCard<ExclusiveDevice<Spi<Spi0, IntrDelay>, Pin<SpiSdCs>, IntrDelay>, IntrDelay>;
 
+const JINGLE: &'static [u8] = include_bytes!("../music.raw");
+
+/*
 #[silicon_hal::entry]
 fn main() -> ! {
     let mut peripherals = silicon_hal::init();
 
-    let mut dac = peripherals.dac;
-    let (mut led0, mut led1, mut led2, mut led3, mut led4, mut led5, mut led6, mut led7) = {
+    let mut leds : [&mut dyn OutputPin<Error = Infallible>; 8] = {
         let (led0, led1, led2, led3, led4, led5, led6, led7) =
             peripherals.gpio.take_all_leds().unwrap();
-        (
-            led0.into_pin(),
-            led1.into_pin(),
-            led2.into_pin(),
-            led3.into_pin(),
-            led4.into_pin(),
-            led5.into_pin(),
-            led6.into_pin(),
-            led7.into_pin(),
-        )
+        [
+            &mut led0.into_pin(),
+            &mut led1.into_pin(),
+            &mut led2.into_pin(),
+            &mut led3.into_pin(),
+            &mut led4.into_pin(),
+            &mut led5.into_pin(),
+            &mut led6.into_pin(),
+            &mut led7.into_pin(),
+        ]
     };
+
+    // SPI
     let mut sd_cs = peripherals.gpio.take_spi_sd_cs().unwrap().into_pin();
     /* SOFT SPI
     let spi_sd: silicon_hal::gpio::SpiPins<SpiSdMosi, SpiSdClk, SpiSdMiso> = peripherals.gpio.take_spi_sd().unwrap();
@@ -65,12 +67,11 @@ fn main() -> ! {
     spi_hard.initialize();
     delay_ms(250);
     let spi_sd = ExclusiveDevice::new(spi_hard, sd_cs, INTR_DELAY).unwrap();
-
     let mut sdcard: TheSdCard = SdCard::new(spi_sd, INTR_DELAY);
 
-    let mut leds: [&mut dyn OutputPin<Error = Infallible>; 8] = [
-        &mut led0, &mut led1, &mut led2, &mut led3, &mut led4, &mut led5, &mut led6, &mut led7,
-    ];
+    // Audio
+    let dac = peripherals.dac;
+    let mut audio_streamer = AudioStreamer::new_mono(dac).initialize();
 
     loop {
         // Init the LEDs
@@ -120,7 +121,70 @@ fn main() -> ! {
         //test_tone(&mut dac, &mut leds);
 
         // Loading a music file from SD card and playing it via DAC
-        sdcard = play_file(&mut dac, &mut leds, sdcard);
+        sdcard = play_file(&mut audio_streamer, &mut leds, sdcard);
+    }
+}
+*/
+
+/// TESTING - AUDIO STREAMING ONLY
+#[silicon_hal::entry]
+fn main() -> ! {
+    let mut peripherals = silicon_hal::init();
+
+    let mut leds: [&mut dyn OutputPin<Error = Infallible>; 8] = {
+        let (led0, led1, led2, led3, led4, led5, led6, led7) =
+            peripherals.gpio.take_all_leds().unwrap();
+        [
+            &mut led0.into_pin(),
+            &mut led1.into_pin(),
+            &mut led2.into_pin(),
+            &mut led3.into_pin(),
+            &mut led4.into_pin(),
+            &mut led5.into_pin(),
+            &mut led6.into_pin(),
+            &mut led7.into_pin(),
+        ]
+    };
+
+    let mut btns : [&mut dyn InputPin<Error = Infallible>; 6] = {
+        let (btn1, btn2, btn3, btn4, btn5, btn6) = peripherals.gpio.take_all_btns().unwrap();
+        [
+            &mut btn1.into_pin(),
+            &mut btn2.into_pin(),
+            &mut btn3.into_pin(),
+            &mut btn4.into_pin(),
+            &mut btn5.into_pin(),
+            &mut btn6.into_pin(),
+        ]
+    };
+
+    // Audio
+    let dac = peripherals.dac;
+    let mut audio_streamer = AudioStreamer::new_mono(dac).initialize();
+
+    loop {
+        // Init the LEDs
+        reset_leds(&mut leds);
+
+        leds[0].set_high();
+        delay_ms(1000);
+        leds[0].set_low();
+
+        // Play the jingle from included bytes
+        let mut tx = 0;
+        while tx < JINGLE.len() {
+            tx += audio_streamer.write_samples(&JINGLE[tx..JINGLE.len()]);
+            leds[5].set_high();
+            delay_ms(1);
+            leds[5].set_low();
+        }
+
+        // Wait for btn1 to be pressed
+        loop {
+            if btns[0].is_high().unwrap() {
+                break;
+            }
+        }
     }
 }
 
@@ -180,7 +244,7 @@ impl TimeSource for ZeroTimeSource {
 
 #[inline(never)]
 pub fn play_file(
-    dac: &mut dac::AudioDac,
+    streamer: &mut AudioStreamer<audio::Mono, audio::Initialized>,
     leds: &mut [&mut dyn OutputPin<Error = Infallible>],
     sdcard: TheSdCard,
 ) -> TheSdCard {
@@ -207,7 +271,6 @@ pub fn play_file(
     // Root directory opened successfully
     leds[2].set_high();
 
-    
     let Ok(my_file) = volume_mgr.open_file_in_dir(root_dir, "music.raw", Mode::ReadOnly) else {
         // Failed to open file, indicate error via LED7
         leds[5].set_high();
@@ -235,15 +298,17 @@ pub fn play_file(
             break;
         }
 
+        let mut toggle_led5 = false;
+        let mut tx = 0;
         // Process the read data (e.g., send to DAC)
-        let mut i = 0;
-        while i < bytes_read {
-            dac.write_left_sample(buffer[i]);
-            i+=1;
+        while (tx < bytes_read) {
+            tx += streamer.write_samples(&buffer[tx..bytes_read]);
+            toggle_led5 = !toggle_led5;
+            leds[5].set_state(to_pin_state(toggle_led5));
         }
     }
-    
-    dac.write_stereo_sample(0, 0);
+
+    let _ = streamer.write_sample(0);
     reset_leds(leds);
     leds[4].set_high();
 

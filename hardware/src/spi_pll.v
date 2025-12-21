@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+`ifndef SIMULATION
 /// A simple PLL module to generate the multiple clocks
 /// needed for the SPI clocks.
 ///
@@ -9,7 +11,7 @@ module spi_pll(
   output wire clk_160, 
   output wire clk_80,
   output wire clk_10,
-  output wire clk_5,
+  output wire clk_5
 );
 
   // Instantiate the PLL primitive.
@@ -118,3 +120,21 @@ module spi_pll(
     .LOCK()
   );
 endmodule
+`else
+module spi_pll(
+  input clk_25, 
+  input rst_n,
+  output wire clk_160, 
+  output wire clk_80,
+  output wire clk_10,
+  output wire clk_5
+);
+
+  // In simulation, just pass through the 25MHz clock.
+  assign clk_160 = clk_25;
+  assign clk_80 = clk_25;
+  assign clk_10 = clk_25;
+  assign clk_5 = clk_25;
+
+endmodule
+`endif

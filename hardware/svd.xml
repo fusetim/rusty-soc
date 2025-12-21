@@ -477,9 +477,129 @@
             </registers>
         </peripheral>
 
+        <!-- Peripherals > AudioStreamer -->
+        <peripheral>
+            <!-- DAC Base Address is : 0x10000 + 0x1000 (len: 0x400)-->
+            <name>AudioStreamer</name>
+            <description>On-board Audio Streamer (all-pipelined FIFO buffer + DAC), directly wired to the Audio interface.</description>
+            <baseAddress>0x11000</baseAddress>
+            <addressBlock>
+                <offset>0x0</offset>
+                <size>0x08</size>
+                <usage>registers</usage>
+            </addressBlock>
+            <addressBlock>
+                <offset>0x08</offset>
+                <size>0x3f7</size>
+                <usage>reserved</usage>
+            </addressBlock>
+            <registers>
+                <register>
+                    <name>CONTROL</name>
+                    <description>Control and configure the peripheral.</description>
+                    <addressOffset>0x00</addressOffset>
+                    <size>8</size>
+                    <access>read-write</access>
+                    <resetValue>0x00</resetValue>
+                    <fields>
+                        <field>
+                            <name>ENABLE</name>
+                            <description>Enable the peripheral (and link it to the DAC).</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                        <field>
+                            <name>MODE</name>
+                            <description>Set the operating mode of the peripheral (MONO=0 or STEREO=1).</description>
+                            <bitOffset>1</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                        <field>
+                            <name>QUEUE_FULL</name>
+                            <description>Indicates if the internal stream queue is full.</description>
+                            <bitOffset>2</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                        <field>
+                            <name>QUEUE_ALMOST_FULL</name>
+                            <description>Indicates if the internal stream queue is almost full (at least 32 bytes can be safely written).</description>
+                            <bitOffset>3</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                        <field>
+                            <name>QUEUE_ALMOST_EMPTY</name>
+                            <description>Indicates if the internal stream queue is almost empty (less than 32 bytes are still unprocessed -- safe to write 480 bytes).</description>
+                            <bitOffset>4</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                        <field>
+                            <name>QUEUE_EMPTY</name>
+                            <description>Indicates if the internal stream queue is empty.</description>
+                            <bitOffset>5</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>DATA_STEREO_SINGLE</name>
+                    <description>Write a single stereo audio sample to the stream queue.</description>
+                    <addressOffset>0x04</addressOffset>
+                    <size>16</size>
+                    <access>write-only</access>
+                    <resetValue>0x00</resetValue>
+                    <fields>
+                        <field>
+                            <name>SAMPLE_LEFT</name>
+                            <description>Left audio channel data.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                        <field derivedFrom="SAMPLE_LEFT">
+                            <name>SAMPLE_RIGHT</name>
+                            <description>Right audio channel data.</description>
+                            <bitOffset>8</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                    </fields>
+                </register>
+                <register>
+                    <name>DATA_MONO_SINGLE</name>
+                    <description>Write a single mono audio sample to the stream queue.</description>
+                    <addressOffset>0x04</addressOffset>
+                    <size>16</size>
+                    <access>write-only</access>
+                    <resetValue>0x00</resetValue>
+                    <fields>
+                        <field>
+                            <name>SAMPLE0</name>
+                            <description>Mono channel audio sample.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                        <field>
+                            <name>WID</name>
+                            <description>Write ID for the audio sample. Two consecutive writes with the same ID will be treated as a single sample write.</description>
+                            <bitOffset>8</bitOffset>
+                            <bitWidth>8</bitWidth>
+                            <access>write-only</access>
+                        </field>
+                    </fields>
+                </register>
+            </registers>
+        </peripheral>
+
         <!-- Peripherals > Display -->
         <peripheral>
-            <!-- Display Base Address is : 0x10000 + 0x7x00 (len: 0x8400)-->
+            <!-- Display Base Address is : 0x10000 + 0x7c00 (len: 0x8400)-->
             <name>Display</name>
             <description>On-board Display interface, with hardware Framebuffer (128x128, RGB565).</description>
             <baseAddress>0x17c00</baseAddress>

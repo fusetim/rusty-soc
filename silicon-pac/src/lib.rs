@@ -57,6 +57,15 @@ impl core::fmt::Debug for Spi0 {
 }
 #[doc = "On-board SPI0 interface (only SPI Master)."]
 pub mod spi0;
+#[doc = "On-board Audio Streamer (all-pipelined FIFO buffer + DAC), directly wired to the Audio interface."]
+pub type AudioStreamer = crate::Periph<audio_streamer::RegisterBlock, 0x0001_1000>;
+impl core::fmt::Debug for AudioStreamer {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("AudioStreamer").finish()
+    }
+}
+#[doc = "On-board Audio Streamer (all-pipelined FIFO buffer + DAC), directly wired to the Audio interface."]
+pub mod audio_streamer;
 #[doc = "On-board Display interface, with hardware Framebuffer (128x128, RGB565)."]
 pub type Display = crate::Periph<display::RegisterBlock, 0x0001_7c00>;
 impl core::fmt::Debug for Display {
@@ -79,6 +88,8 @@ pub struct Peripherals {
     pub dac: Dac,
     #[doc = "SPI0"]
     pub spi0: Spi0,
+    #[doc = "AudioStreamer"]
+    pub audio_streamer: AudioStreamer,
     #[doc = "Display"]
     pub display: Display,
 }
@@ -107,6 +118,7 @@ impl Peripherals {
             gpio: unsafe { Gpio::steal() },
             dac: unsafe { Dac::steal() },
             spi0: unsafe { Spi0::steal() },
+            audio_streamer: unsafe { AudioStreamer::steal() },
             display: unsafe { Display::steal() },
         }
     }

@@ -16,6 +16,8 @@ import('../lib/fusetim/spi/SpiMasterPeripheral.v')
 import('./spi_pll.v')
 // Includes the DAC peripheral
 $include('./dac.si')
+// Includes the Audio Streamer peripheral
+$include('./audio.si')
 // Includes the DISPLAY peripheral
 $include('./display.si')
 // -- End of Includes -- //
@@ -179,8 +181,24 @@ $$end
         // mem_wr_data <: prev_wdata,
         // mem_wr_en   <: prev_mem_rw,
         // Audio Output signals
+        // audio_left_out  :> audio_l,
+        // audio_right_out :> audio_r
+    );
+
+    // Audio Streamer Peripheral
+    uint1 audio_streamer_mem_en(0);
+    uint1 audio_streamer_en(0);
+    audio_streamer_peripheral audio_streamer(
+        // Memory-mapped I/O interface
+        // mem_addr    <: prev_mem_addr[0,8],
+        // mem_wr_data <: prev_wdata,
+        // mem_wr_en   <: prev_mem_rw,
+        // mem_rd_data :> memio.rdata,
+        // Audio Output signals
         audio_left_out  :> audio_l,
-        audio_right_out :> audio_r
+        audio_right_out :> audio_r,
+        // Peripheral enabled signal
+        enabled         :> audio_streamer_en
     );
 
     // Display Peripheral for OLED Screen with Hardware Framebuffer
@@ -217,11 +235,16 @@ $$end
         oled_csn := sd_csn;
         oled_resn := spi0_rclk;
 
+        // Audio Switch - select between DAC and Audio Streamer outputs
+        // audio_l = audio_streamer_en ? audio_streamer.audio_left_out : dac.audio_left_out;
+        // audio_r = audio_streamer_en ? audio_streamer.audio_right_out : dac.audio_right_out;
+
         // Peripheral enable signals
         uint1 peripheral_en = prev_mem_addr[$periph_bit$,1]; // 100000000000000
         gpio_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000001); // GPIO at 0x10400 = 0b100000100000000
         dac_en  = peripheral_en & (prev_mem_addr[8, 6] == 6b000010); // DAC at 0x10800  = 0b100001000000000
         spi0_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000011); // SPI0 at 0x10C00 = 0b100001100000000
+        audio_streamer_mem_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000100); // Audio Streamer at 0x11000 = 0b100010000000000
 
         // GPIO Peripheral memory-mapped I/O access
         gpio.mem_addr    = prev_mem_addr[0,8];
@@ -234,16 +257,21 @@ $$end
         spi0.mem_wr_data = prev_wdata;
         spi0.mem_wr_en   = prev_mem_rw;
 
-
         // DAC Peripheral memory-mapped I/O access
         dac.mem_addr    = prev_mem_addr[0,8];
         dac.mem_wr_data = prev_wdata;
         dac.mem_wr_en   = prev_mem_rw;
 
+        // Audio Streamer Peripheral memory-mapped I/O access
+        audio_streamer.mem_addr    = prev_mem_addr[0,8];
+        audio_streamer.mem_wr_data = prev_wdata;
+        audio_streamer.mem_wr_en   = prev_mem_rw;
+
         // Memory Interface
         memio.rdata =   (~peripheral_en ? ram.rdata : 32b0)
                         | (peripheral_en & gpio_en ? gpio.mem_rd_data : 32b0)
-                        | (peripheral_en & spi0_en ? spi0.mem_rd_data : 32b0);
+                        | (peripheral_en & spi0_en ? spi0.mem_rd_data : 32b0)
+                        | (peripheral_en & audio_streamer_mem_en ? audio_streamer.mem_rd_data : 32b0);
         ram.wenable = memio.wenable & {4{~memio.addr[$periph_bit$,1]}};
         //                               ^^^^^^^ no write if on peripheral addresses
         ram.wdata        = memio.wdata;
@@ -261,10 +289,13 @@ $$end
                 /*if (display_peripheral_en) {
                     __display("[cycle %d] DISPLAY access: %h(%b) < %h",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata);
                 }*/
-                // ifD a (spi0_en) {
-                //     __display("[cycle %d] SPI0 access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
-                // }
-                if (~gpio_en & ~dac_en /*& ~display_peripheral_en & ~spi0_en*/) {
+                if (spi0_en) {
+                    __display("[cycle %d] SPI0 access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
+                }
+                if (audio_streamer_mem_en) {
+                    __display("[cycle %d] AUDIO STREAMER access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
+                }
+                if (~gpio_en & ~dac_en /*& ~display_peripheral_en*/ & ~spi0_en & ~audio_streamer_mem_en) {
                     __display("[cycle %d] Peripheral access to unknown address: %b",cycle,prev_mem_addr);
                 }
             }

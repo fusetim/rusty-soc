@@ -13,10 +13,6 @@ CMD_GCC="riscv64-unknown-elf-gcc"
 CMD_OBJCOPY="riscv64-unknown-elf-objcopy"
 CMD_RANLIB="riscv64-unknown-elf-ranlib"
 
-# Compile the entrypoint (asm)
-echo "Assembling entrypoint..."
-${CMD_AS} -march=rv32i -mabi=ilp32 -o "$OUTPUT_DIR/entry.o" silicon/entry.s
-
 # If OUTPUT_FILE = "silicon", then we can assemble all the things for flashing on FPGA
 if [[ "$OUTPUT_FILE" == "silicon" ]]; then
     echo "Preparing FPGA bitstream and related files..."

@@ -60,7 +60,7 @@ module SpiMasterPeripheral #(
     // SpiMaster -- The actual SPI driver
     SpiMaster #(
         .CPOL(CPOL),
-        .CPHA(CPHA),
+        .CPHA(CPHA)
     ) spi_master_inst (
         .rst(driver_reset),
         .rclk(rclk),

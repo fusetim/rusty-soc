@@ -1,140 +1,6 @@
 // Import DAC module
 $include('./dac.si')
 
-/// Audio Buffer: 1024 samples (256 words of 32 bits each)
-unit audio_buffer(
-    /// Memory interface
-    /// waddr - write address (byte-aligned)
-    input  uint10   waddr,
-    /// wdata - write data (32 bits)
-    input  uint32   wdata,
-    /// wenable - write enable (4 bits, one per byte)
-    input  uint4    wenable,
-    /// raddr - read address (byte-aligned)
-    input  uint10   raddr,
-    /// rdata - read data (32 bits)
-    output! uint32   rdata
-) {
-    // Four separate byte-wide dual-port BRAMs to store audio samples
-    // buffer0 holds all addr where addr[0,2] == 00
-    // buffer1 holds all addr where addr[0,2] == 01
-    // buffer2 holds all addr where addr[0,2] == 10
-    // buffer3 holds all addr where addr[0,2] == 11
-    simple_dualport_bram uint8 buffer0[256] = {pad(0)};
-    simple_dualport_bram uint8 buffer1[256] = {pad(0)};
-    simple_dualport_bram uint8 buffer2[256] = {pad(0)};
-    simple_dualport_bram uint8 buffer3[256] = {pad(0)};
-
-    always {
-        // Write operation
-        buffer0.wenable1 = 0;
-        buffer1.wenable1 = 0;
-        buffer2.wenable1 = 0;
-        buffer3.wenable1 = 0;
-
-        if (wenable != 4b0000) {
-            if (wenable[0,1]) {
-                if (waddr[0,2] == 2b00) {
-                    buffer0.addr1 = waddr[2,8];
-                    buffer0.wdata1 = wdata[0,8];
-                    buffer0.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b01) {
-                    buffer1.addr1 = waddr[2,8];
-                    buffer1.wdata1 = wdata[0,8];
-                    buffer1.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b10) {
-                    buffer2.addr1 = waddr[2,8];
-                    buffer2.wdata1 = wdata[0,8];
-                    buffer2.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b11) {
-                    buffer3.addr1 = waddr[2,8];
-                    buffer3.wdata1 = wdata[0,8];
-                    buffer3.wenable1 = 1;
-                }
-            }
-            if (wenable[1,1]) {
-                if (waddr[0,2] == 2b00) {
-                    buffer1.addr1 = waddr[2,8];
-                    buffer1.wdata1 = wdata[8,8];
-                    buffer1.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b01) {
-                    buffer2.addr1 = waddr[2,8];
-                    buffer2.wdata1 = wdata[8,8];
-                    buffer2.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b10) {
-                    buffer3.addr1 = waddr[2,8];
-                    buffer3.wdata1 = wdata[8,8];
-                    buffer3.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b11) {
-                    buffer0.addr1 = waddr[2,8] + 1;
-                    buffer0.wdata1 = wdata[8,8];
-                    buffer0.wenable1 = 1;
-                }
-            }
-            if (wenable[2,1]) {
-                if (waddr[0,2] == 2b00) {
-                    buffer2.addr1 = waddr[2,8];
-                    buffer2.wdata1 = wdata[16,8];
-                    buffer2.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b01) {
-                    buffer3.addr1 = waddr[2,8];
-                    buffer3.wdata1 = wdata[16,8];
-                    buffer3.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b10) {
-                    buffer0.addr1 = waddr[2,8] + 1;
-                    buffer0.wdata1 = wdata[16,8];
-                    buffer0.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b11) {
-                    buffer1.addr1 = waddr[2,8] + 1;
-                    buffer1.wdata1 = wdata[16,8];
-                    buffer1.wenable1 = 1;
-                }
-            }
-            if (wenable[3,1]) {
-                if (waddr[0,2] == 2b00) {
-                    buffer3.addr1 = waddr[2,8];
-                    buffer3.wdata1 = wdata[24,8];
-                    buffer3.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b01) {
-                    buffer0.addr1 = waddr[2,8] + 1;
-                    buffer0.wdata1 = wdata[24,8];
-                    buffer0.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b10) {
-                    buffer1.addr1 = waddr[2,8] + 1;
-                    buffer1.wdata1 = wdata[24,8];
-                    buffer1.wenable1 = 1;
-                }
-                if (waddr[0,2] == 2b11) {
-                    buffer2.addr1 = waddr[2,8] + 1;
-                    buffer2.wdata1 = wdata[24,8];
-                    buffer2.wenable1 = 1;
-                }
-            }
-        }
-
-        // Read operation
-        buffer0.addr0 = raddr[0,2] == 0 ? raddr[2,8] : raddr[2,8] + 1;
-        buffer1.addr0 = raddr[0,2] >= 1 ? raddr[2,8] : raddr[2,8] + 1;
-        buffer2.addr0 = raddr[0,2] >= 2 ? raddr[2,8] : raddr[2,8] + 1;
-        buffer3.addr0 = raddr[0,2] >= 3 ? raddr[2,8] : raddr[2,8] + 1;
-        rdata := (raddr[0,2] == 2b00 ? {buffer0.rdata0, buffer1.rdata0, buffer2.rdata0, buffer3.rdata0} : 32h00000000)
-               | (raddr[0,2] == 2b01 ? {buffer1.rdata0, buffer2.rdata0, buffer3.rdata0, buffer0.rdata0} : 32h00000000)
-               | (raddr[0,2] == 2b10 ? {buffer2.rdata0, buffer3.rdata0, buffer0.rdata0, buffer1.rdata0} : 32h00000000)
-               | (raddr[0,2] == 2b11 ? {buffer3.rdata0, buffer0.rdata0, buffer1.rdata0, buffer2.rdata0} : 32h00000000);
-    }
-}
-
 /// Audio Streamer Peripheral
 unit audio_streamer_peripheral(
     // Memory-mapped I/O interface
@@ -153,21 +19,21 @@ unit audio_streamer_peripheral(
     uint10 REG_DATA_W(10h04);     // Data Write
 
     // Control register bits
-    uint1 control_enable(0);       // Bit 0: Enable audio streaming
+    uint1 control_enable(1);       // Bit 0: Enable audio streaming
     uint1 control_stereo(0);       // Bit 1: Stereo (1) / Mono (0) mode
+    // Internal data register sync
+    uint8 ctrl_data_wid(8h00); // On write on register DATA, a Write-ID must be provided (only when this ID changes, the data will accounted in the buffer)
 
     // Audio buffer (1024 samples - 512 left, 512 right or 1024 mono)
-    audio_buffer audio_buf();
+    simple_dualport_bram uint8 audio_buffer[1024] = {pad(0)};
     uint10 buffer_read_cursor(0); // read cursor (start of the ring buffer)
-    uint10 buffer_length(0);      // number of samples currently in buffer
-
-    uint4 buffer_read_inc(0);        // increment value for read cursor based on stereo/mono mode
-    uint4 buffer_write_inc(0);       // increment value for write cursor based on stereo/mono mode
+    uint10 buffer_write_cursor(0); // write cursor (end of the ring buffer)
+    // length is write - read (modulo buffer size)
 
     // DAC output samples
     uint8 audio_left_sample(8b00000000);
     uint8 audio_right_sample(8b00000000);
-    uint2 audio_next_sample(0);
+
     // 8kHz sampling rate "reference" clock
     uint16 dac_counter(0);
 
@@ -183,76 +49,54 @@ unit audio_streamer_peripheral(
     );
 
     always {
-        // Update enabled signal
-        enabled := control_enable;
-        buffer_read_cursor = buffer_read_cursor + buffer_read_inc;
-        buffer_length = buffer_length - buffer_read_inc + buffer_write_inc;
-        buffer_read_inc = 0;
-        buffer_write_inc = 0;
-
-        // Memory-mapped I/O access
+        // Handle memory-mapped I/O
         uint10 mem_addr_ext = {mem_addr, 2b00}; // Extend to word-aligned address
-        uint1 access_control        = (mem_addr_ext == REG_CONTROL_RW);
-        uint1 access_data           = (mem_addr_ext == REG_DATA_W);
-        uint10 buffer_write_cursor = (buffer_read_cursor + buffer_length) & (1024-1); // write cursor
+        uint1 access_reg_ctrl        = (mem_addr_ext == REG_CONTROL_RW);
+        uint1 access_reg_data        = (mem_addr_ext == REG_DATA_W);
 
-        // Handle read from GPIO peripheral
-        uint1 q_empty = (buffer_length == 0);
-        uint1 q_almost_full = (buffer_length >= 960);
-        uint1 q_almost_empty = (buffer_length <= 64);
-        uint1 q_full = (buffer_length == 1024);
-        mem_rd_data = access_control ? {26b0, q_empty, q_almost_empty, q_almost_full, q_full, control_stereo, control_enable} : 32h00000000;
+        // Handle read from control register
+        uint10 buffer_length = buffer_write_cursor - buffer_read_cursor; // current buffer length (note: wraps around automatically but might overflow)
+        uint1 q_empty = (buffer_length == 0) ? 1 : 0;
+        uint1 q_full  = (buffer_length == 1023) ? 1 : 0;
+        uint1 q_almost_full = (buffer_length >= (1024-1-32)) ? 1 : 0;
+        uint1 q_almost_empty = (buffer_length <= 32) ? 1 : 0;
+        mem_rd_data = (access_reg_ctrl ? {26b0, q_empty, q_almost_empty, q_almost_full, q_full, control_stereo, control_enable} : 32h00000000);
 
-        // Handle write to GPIO peripheral
-        if ((mem_wr_en != 4b0000)) {
-            // Update control register if writing to control register
-            if (access_control) {
-                control_enable = mem_wr_en[0,1] & mem_wr_data[0,1];
-                control_stereo = mem_wr_en[0,1] & mem_wr_data[1,1];
-            }
-            // Write audio data if writing to data register and buffer not full
-            if (access_data) {
-                // TODO: Handle buffer overflow (currently just ignores new data when full)
-                if (~control_stereo && mem_wr_data == 4b0001) {
-                    // Single mono sample write
-                    if (!q_full) {
-                        audio_buf.waddr   = buffer_write_cursor;
-                        audio_buf.wdata   = {24b0, mem_wr_data[0,8]};
-                        audio_buf.wenable = 4b0001;
-                        buffer_write_inc  = 1;
-                    }
-                }
-                // TODO: Handle stereo and multiple samples write
-            }
+        // Prepare audio_buffer for this cycle
+        audio_buffer.wenable1 = 0; // default no write
+        audio_buffer.addr1 = buffer_write_cursor; // if a write occurs, it will happens there
+        // read address advances only when enabled, dac_counter hits 0 (so at 8kHz) and buffer not empty
+        buffer_read_cursor = (control_enable && dac_counter == 0 && buffer_length != 0) ? (buffer_read_cursor + 1) : buffer_read_cursor;
+        audio_buffer.addr0 = buffer_read_cursor; // read from current read cursor
+
+        // Update dac at the sampling rate (8kHz)
+        audio_left_sample = control_enable ? audio_buffer.rdata0 : 8b00000000;
+        audio_right_sample = control_enable ? audio_buffer.rdata0 : 8b00000000;
+
+        // Handle write to registers
+        if (mem_wr_en != 4b0000) {
+            // Handle write to control register
+            // control_enable = (access_reg_ctrl & mem_wr_en[0,1]) ? mem_wr_data[0,1] : control_enable;
+            control_stereo = (access_reg_ctrl & mem_wr_en[0,1]) ? mem_wr_data[1,1] : control_stereo;
+
+            // Handle write to data register
+            audio_buffer.wdata1 = (access_reg_data & mem_wr_en[0,1]) ? mem_wr_data[0,8] : 8b00000000;
+            audio_buffer.wenable1 = (access_reg_data & mem_wr_en[0,1]) ? 1 : 0;
+
+            // Check if the write ID has changed
+            // If so, advance the write cursor
+            uint8 new_wid = (access_reg_data & mem_wr_en[1,1]) ? mem_wr_data[8,8] : ctrl_data_wid;
+            buffer_write_cursor = (new_wid != ctrl_data_wid) ? (buffer_write_cursor + 1) : buffer_write_cursor;
+            ctrl_data_wid = new_wid;
         }
 
-        // Audio streaming logic
-        audio_next_sample[1,1] = audio_next_sample[0,1];
-        audio_next_sample[0,1] = control_enable & dac_left.next;
-
-        if (control_enable && dac_counter == 0 && (buffer_length != 0)) {
-            // Read next samples from buffer
-            audio_buf.raddr = buffer_read_cursor;
-            if (control_stereo) {
-                // Stereo mode: read left and right samples
-                audio_left_sample  = audio_buf.rdata[0,8];
-                audio_right_sample = audio_buf.rdata[8,8];
-                buffer_read_inc = 2;
-            } else {
-                // Mono mode: read single sample for both channels
-                audio_left_sample  = audio_buf.rdata[0,8];
-                audio_right_sample = audio_buf.rdata[0,8];
-                buffer_read_inc = 1;
-            }
-        } 
-
         // DAC clock divider for 8kHz sampling rate (assuming system clock is 25MHz)
-        dac_counter = (dac_counter == 3124) ? 0 : dac_counter + 1;
+        dac_counter = (dac_counter == 3124) ? 0 : (dac_counter + 1);
 
         // SIMULATION ONLY: debug
         $$if SIMULATION then
-            if (control_enable && dac_counter == 0) {
-                __display("audio streamer> new sample: %h, buflen: %d, bufread: %h, bufwrite: %h", audio_left_sample, buffer_length, buffer_read_cursor, buffer_write_cursor);
+            if (dac_counter == 0) {
+                __display("audio streamer> enable: %b, new sample: %h, buflen: %d, bufread: %h, bufwrite: %h", control_enable, audio_left_sample, buffer_length, buffer_read_cursor, buffer_write_cursor);
             }
         $$end
     }

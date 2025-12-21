@@ -2,6 +2,7 @@
 
 pub use silicon_pac as pac;
 
+pub mod audio;
 pub mod dac;
 pub mod delay;
 pub mod display;

@@ -5,22 +5,35 @@
 /// The PWM frequency is set to 100 kHz, which should be sufficient for audio output
 unit dac(
     input uint8 in,
-    output uint4 out
+    output uint4 out,
+    output uint1 next,
 ){
-  // PWM period is 100 kHz (aka 250 clock cycles at 25MHz)
-  // audio_out will either be 0 (no sound) or 15 (max sound)
-  uint10 cycle(0);
+    // 100 kHz PWM counter = 250 cycles at 25 MHz clock
+    // next signal indicates when to load the next sample - when counter is in range 240-249
+    uint8 cycle(0);
 
-  always {
-    // count cycles
-    cycle = (cycle == 249) ? 0 : cycle + 1;
+    always {
+        
+        // cycle counter for PWM
+        cycle = (cycle == 249) ? 0 : cycle + 1;
 
-    // audio_in is 8bit: 0-255 for 0V to max voltage
-    // as a first approach, we can simply map
-    // audio_in (0-255) to PWM threshold (0-249)
-    // (a bit of a crude mapping, but works for now)
-    out = (cycle < in) ? 8 : 0;
-  }
+        // Interpolate the high-bits between the 4-bit DAC levels.
+        uint4 dac_low = in[4,4]; // Top 4 bits of input - also the DAC low level for this sample
+        uint4 dac_high = (dac_low == 15) ? dac_low : (dac_low + 1); // DAC high level for this sample (saturate at max)
+        uint8 pwm_duty = {in[0,4],4b0000}; // PWM duty cycle (0-240)
+
+        // Determine output level based on PWM duty cycle
+        if (cycle < pwm_duty) {
+            out = dac_high;
+        } else {
+            out = dac_low;
+        }
+
+        // next signal when cycle is in range 240-249
+        next = (cycle == 240) ? 1 : (cycle == 249) ? 0 : next;
+        
+        //out = in[4,4]; // Directly map top 4 bits to output
+    }
 }
 
 /// Audio DAC Peripheral
@@ -35,7 +48,7 @@ unit dac_peripheral(
     output uint4        audio_right_out(4b0000)
 ) {
     // Register addresses (word-aligned)
-    uint10 REG_OUTPUT_W(10h00); // LED Write
+    uint10 REG_OUTPUT_W(10h00); // Output Write
 
     uint8 audio_left_sample(8b00000000);
     uint8 audio_right_sample(8b00000000);

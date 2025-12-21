@@ -41,7 +41,10 @@ where
     D: DelayNs,
 {
     pub fn new(peripheral: P, delayer: D) -> Self {
-        Self { peripheral , delayer }
+        Self {
+            peripheral,
+            delayer,
+        }
     }
 
     /// Initialize the SPI peripheral with default settings
