@@ -7,7 +7,9 @@ use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{Mode, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
 use silicon_hal::audio::AudioStreamer;
 use silicon_hal::delay::IntrDelay;
-use silicon_hal::gpio::Pin;
+use silicon_hal::display::DisplayPeripheral;
+use silicon_hal::gpio::{Pin, self as _};
+use silicon_hal::gpio::never_bank::NeverPin;
 use silicon_hal::gpio::spi_sdcard_bank::SpiSdCs;
 use silicon_hal::spi::{Spi, Spi0};
 use silicon_hal::{audio, dac};
@@ -30,14 +32,12 @@ type TheSdCard = SdCard<
 // HARD SPI
 type TheSdCard = SdCard<ExclusiveDevice<Spi<Spi0, IntrDelay>, Pin<SpiSdCs>, IntrDelay>, IntrDelay>;
 
-const JINGLE: &'static [u8] = include_bytes!("../music.raw");
-
-
+/*
 #[silicon_hal::entry]
 fn main() -> ! {
     let mut peripherals = silicon_hal::init();
 
-    let mut leds : [&mut dyn OutputPin<Error = Infallible>; 8] = {
+    let mut leds: [&mut dyn OutputPin<Error = Infallible>; 8] = {
         let (led0, led1, led2, led3, led4, led5, led6, led7) =
             peripherals.gpio.take_all_leds().unwrap();
         [
@@ -124,6 +124,79 @@ fn main() -> ! {
         sdcard = play_file(&mut audio_streamer, &mut leds, sdcard);
     }
 }
+*/
+
+// TESTING - DISPLAY ONLY
+#[silicon_hal::entry]
+fn main() -> ! {
+    let mut peripherals = silicon_hal::init();
+    let mut leds: [&mut dyn OutputPin<Error = Infallible>; 8] = {
+        let (led0, led1, led2, led3, led4, led5, led6, led7) =
+            peripherals.gpio.take_all_leds().unwrap();
+        [
+            &mut led0.into_pin(),
+            &mut led1.into_pin(),
+            &mut led2.into_pin(),
+            &mut led3.into_pin(),
+            &mut led4.into_pin(),
+            &mut led5.into_pin(),
+            &mut led6.into_pin(),
+            &mut led7.into_pin(),
+        ]
+    };
+
+    // Get the button pins
+    let mut btn1 = {
+        let btn1 = peripherals.gpio.take_btn1().unwrap();
+        btn1.into_pin()
+    };
+
+    // Get the OLED pins
+    let (oled_cs, oled_dc, oled_rst) = {
+        let (oled_cs, _, _, oled_dc, oled_rst) = peripherals.gpio.take_oled().unwrap();
+        (oled_cs.into_pin(), oled_dc.into_pin(), oled_rst.into_pin())
+    };
+    // Initialize the SPI
+    let mut oled_spi = Spi::new(peripherals.spi1, INTR_DELAY);
+    let oled_spi_cs = Pin::new_output(NeverPin(PinState::Low));
+    oled_spi.initialize();
+    delay_ms(250);
+    let oled_spi_device = ExclusiveDevice::new(
+        oled_spi,
+        oled_spi_cs,
+        INTR_DELAY,
+    ).unwrap();
+    // Create the display peripheral
+    let mut display = DisplayPeripheral::new(
+        oled_spi_device,
+        oled_cs,
+        oled_dc,
+        oled_rst,
+        INTR_DELAY.clone(),
+    );
+
+    loop {
+        for i in 0..8 {
+            reset_leds(&mut leds);
+            leds[i].set_high();
+            delay_ms(250);
+        }
+
+        reset_leds(&mut leds);
+
+        // Initialize the display
+        let _display = display.initialize().unwrap();
+        leds[0].set_high();
+        delay_ms(1000);
+
+        // Wait for BTN1 
+        while btn1.is_low().unwrap() {}
+
+        leds[0].set_low();
+        display = _display.disable();
+
+    }
+}
 
 pub fn to_pin_state(state: bool) -> PinState {
     if state { PinState::High } else { PinState::Low }
@@ -149,21 +222,6 @@ pub fn set_leds(led_pins: &mut [&mut dyn OutputPin<Error = Infallible>], states:
     }
 }
 
-pub fn test_tone(dac: &mut dac::AudioDac, leds: &mut [&mut dyn OutputPin<Error = Infallible>]) {
-    for k in 0..64 {
-        reset_leds(leds);
-        leds[k & 0x07].set_high();
-        for i in 0..=8 {
-            unsafe { core::arch::asm!("lb x0, 18(x0)") };
-            dac.write_stereo_sample(8 * i as u8, 255 - 8 * i as u8);
-            unsafe { core::arch::asm!("lb x0, 19(x0)") };
-            INTR_DELAY.delay_ms(1);
-            unsafe { core::arch::asm!("lb x0, 20(x0)") };
-        }
-    }
-    dac.write_stereo_sample(0 as u8, 0 as u8);
-}
-
 struct ZeroTimeSource;
 impl TimeSource for ZeroTimeSource {
     #[inline(always)]
@@ -186,7 +244,8 @@ pub fn play_file(
     sdcard: TheSdCard,
 ) -> TheSdCard {
     // Open the fat filesystem
-    let volume_mgr : VolumeManager<_,_, 1, 1, 1> = VolumeManager::new_with_limits(sdcard, ZeroTimeSource, 0);
+    let volume_mgr: VolumeManager<_, _, 1, 1, 1> =
+        VolumeManager::new_with_limits(sdcard, ZeroTimeSource, 0);
     let Ok(volume0) = volume_mgr.open_raw_volume(VolumeIdx(0)) else {
         // Failed to open volume, indicate error via LED7
         leds[7].set_high();
@@ -208,7 +267,6 @@ pub fn play_file(
     // Root directory opened successfully
     leds[2].set_high();
 
-   
     let Ok(my_file) = volume_mgr.open_file_in_dir(root_dir, "music.raw", Mode::ReadOnly) else {
         // Failed to open file, indicate error via LED7
         leds[5].set_high();
@@ -250,7 +308,7 @@ pub fn play_file(
     let _ = streamer.write_sample(0);
     reset_leds(leds);
     leds[4].set_high();
-    
+
     delay_ms(1000);
     volume_mgr.close_dir(root_dir);
     volume_mgr.free().0

@@ -59,7 +59,7 @@ $$end
     output! uint1 oled_mosi,
     output! uint1 oled_dc,
     output! uint1 oled_resn,
-    output uint1 oled_csn(0),
+    output! uint1 oled_csn(0),
 $$if VERILATOR then
     // configuration for SPIscreen simulation
     output uint2  spiscreen_driver(1/*SSD1351*/),
@@ -154,7 +154,7 @@ $$end
         //clk_160 :> spi0_rclk,
         clk_80 :> spi0_rclk,
         clk_20 :> spi1_rclk,
-        //clk_5 :> spi0_rclk,
+        //clk_5 :> spi1_rclk,
     );
     SpiMasterPeripheral spi0(
         clk        <: clock,

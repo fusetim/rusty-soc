@@ -9,6 +9,9 @@ use embedded_hal::spi::{ErrorType, SpiBus};
 pub trait SpiPeripheral: Sealed + 'static {
     /// Get the register block for SPI
     fn get_perif() -> &'static pac::spi0::RegisterBlock;
+
+    /// Inter-symbol delay in nanoseconds for SPI operations
+    fn get_inter_symbol_delay(&self) -> u32;
 }
 
 pub struct Spi<P: SpiPeripheral, D: DelayNs> {
@@ -28,10 +31,16 @@ impl Spi0 {
 
 impl Sealed for Spi0 {}
 impl SpiPeripheral for Spi0 {
+    #[inline(always)]
     fn get_perif() -> &'static pac::spi0::RegisterBlock {
         // Safety: Only used for reading/writing SPI0 registers
         // Spi0 is a singleton peripheral
         unsafe { &*PacSpi0::ptr() }
+    }
+
+    #[inline(always)]
+    fn get_inter_symbol_delay(&self) -> u32 {
+        100 // 100ns inter-symbol delay - suitable for 40MHz SPI clock
     }
 }
 
@@ -47,10 +56,16 @@ impl Spi1 {
 
 impl Sealed for Spi1 {}
 impl SpiPeripheral for Spi1 {
+    #[inline(always)]
     fn get_perif() -> &'static pac::spi0::RegisterBlock {
         // Safety: Only used for reading/writing SPI1 registers
         // Spi1 is a singleton peripheral
         unsafe { &*PacSpi1::ptr() }
+    }
+
+    #[inline(always)]
+    fn get_inter_symbol_delay(&self) -> u32 {
+        400 // 400ns inter-symbol delay - suitable for 10MHz SPI clock
     }
 }
 
@@ -108,29 +123,27 @@ where
 
     #[inline(always)]
     fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
-        let spi = Spi0::get_perif();
+        let spi = P::get_perif();
         for &word in words {
             self.flush()?; // Ensure no other transfers are ongoing
             // Write the Tx byte to send, this will also start the transfer
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(word) });
-            // Wait a bit for the first bits to be sent - for 500MHz - 4 microseconds should be enough
-            self.delayer.delay_ns(100);
+            self.delayer.delay_ns(self.peripheral.get_inter_symbol_delay());
         }
         Ok(())
     }
 
     #[inline(always)]
     fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Self::Error> {
-        let spi = Spi0::get_perif();
+        let spi = P::get_perif();
         let len = read.len().min(write.len());
         self.flush()?; // Ensure no other transfers are ongoing
         for i in 0..len {
             // Write the Tx byte to send, this will also start the transfer
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(write[i]) });
-            // Wait a bit for the first bits to be sent - for 500MHz - 4 microseconds should be enough
-            self.delayer.delay_ns(100);
+            self.delayer.delay_ns(self.peripheral.get_inter_symbol_delay());
             // Wait until data is ready
             loop {
                 let read_and_status = spi.read_and_status().read();
@@ -152,14 +165,14 @@ where
 
     #[inline(always)]
     fn transfer_in_place(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
-        let spi = Spi0::get_perif();
+        let spi = P::get_perif();
         self.flush()?; // Ensure no other transfers are ongoing
         for word in words.iter_mut() {
             // Write the Tx byte to send, this will also start the transfer
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(*word) });
-            // Wait a bit for the first bits to be sent - for 500MHz - 4 microseconds should be enough
-            self.delayer.delay_ns(100);
+            // Wait a bit for the first bits to be sent 
+            self.delayer.delay_ns(self.peripheral.get_inter_symbol_delay());
             // Wait until data is ready
             loop {
                 let read_and_status = spi.read_and_status().read();
@@ -176,7 +189,8 @@ where
     #[inline(always)]
     fn flush(&mut self) -> Result<(), Self::Error> {
         // Flush -- ensure the SPI peripheral status is not busy
-        let spi = Spi0::get_perif();
+        let spi = P::get_perif();
+        self.delayer.delay_ns(self.peripheral.get_inter_symbol_delay());
         while spi.status().read().busy().bit_is_set() {}
         Ok(())
     }

@@ -95,7 +95,7 @@ unit audio_streamer_peripheral(
 
         // SIMULATION ONLY: debug
         $$if SIMULATION then
-            if (dac_counter == 0) {
+            if (control_enable && dac_counter == 0) {
                 __display("audio streamer> enable: %b, new sample: %h, buflen: %d, bufread: %h, bufwrite: %h", control_enable, audio_left_sample, buffer_length, buffer_read_cursor, buffer_write_cursor);
             }
         $$end

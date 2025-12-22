@@ -21,17 +21,22 @@ pub struct IntrDelay {
 
 impl DelayNs for IntrDelay {
     #[inline(always)]
-    fn delay_ns(&mut self, mut ns: u32) {
+    fn delay_ns(&mut self, ns: u32) {
         if ns <= NS_PER_INSTRUCTION_CYCLE {
             // Less than or equal to NS_PER_INSTRUCTION_CYCLE ns, waste one cycle only
             unsafe { core::arch::asm!("nop") };
             return;
         }
         // Each loop iteration wastes approximately 3 instruction cycles (3 * 120 ns = 360 ns)
-        while ns > 0 {
-            // NOP to waste time
-            unsafe { core::arch::asm!("nop") };
-            ns = ns.saturating_sub(NS_PER_INSTRUCTION_CYCLE * 3);
+        unsafe {
+            core::arch::asm!(
+                "8:",
+                "nop",          // 3 clock cycles
+                "addi {ns}, {ns}, {cycle_cost}", // Subtract the cycle cost
+                "bgtz {ns}, 8b", // Branch if ns > 0
+                ns = in(reg) ns,
+                cycle_cost = const -((NS_PER_INSTRUCTION_CYCLE * 3) as i32),
+            );
         }
     }
 
@@ -85,14 +90,8 @@ impl DelayNs for Timer0Delay {
             unsafe { core::arch::asm!("nop") };
             return;
         }
-        if ns < 1024 {
-            // Less than 1024 ns, round up to 1 us
-            self.delay_us(1);
-            return;
-        }
-
         let timer = Timer::new_timer0();
-        timer.delay_us(ns >> 10);
+        timer.delay_us((ns >> 10) + 1);
     }
 
     #[inline(always)]
