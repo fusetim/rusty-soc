@@ -338,10 +338,8 @@ impl AudioStreamer<Mono, Initialized> {
         // - We have exclusive access to the DAC peripheral here.
         unsafe {
             let peri = pac::AudioStreamer::steal();
-            peri.data_mono_single().write(|w| 
-                w.sample0().bits(sample)
-                .wid().bits(self.state.wid)
-            );
+            peri.data_mono_single()
+                .write(|w| w.sample0().bits(sample).wid().bits(self.state.wid));
         }
         self.state.wid = self.state.wid.wrapping_add(1);
     }

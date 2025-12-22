@@ -125,37 +125,35 @@ $$end
         leds        :> leds,
         btns        <: btns,
         // SPI - SD Card
-        //sd_cs       :> sd_csn,
-        //sd_mosi     :> sd_mosi,
-        //sd_clk      :> sd_clk,
-        //sd_miso     <: sd_miso,
+        sd_cs       :> sd_csn,
+        //sd_mosi     :> sd_mosi, - handled by SPI0 peripheral
+        //sd_clk      :> sd_clk,  - handled by SPI0 peripheral
+        //sd_miso     <: sd_miso, - handled by SPI0 peripheral
         // SPI - OLED Display
-        //oled_cs     :> oled_csn,
-        //oled_mosi   :> oled_mosi,
-        //oled_clk    :> oled_clk,
-        //oled_dc     :> oled_dc,
-        //oled_res    :> oled_resn,
-
-        // -- TESTING SD SPI SIGNALS -- //
-        sd_cs :> sd_csn,
-        // sd_mosi :> sd_mosi,
-        // sd_clk :> sd_clk
-        // -- END TESTING SD SPI SIGNALS -- //
+        oled_cs     :> oled_csn,
+        //oled_mosi   :> oled_mosi, - handled by SPI1 peripheral
+        //oled_clk    :> oled_clk,  - handled by SPI1 peripheral
+        oled_dc     :> oled_dc,
+        oled_res    :> oled_resn,
     );
 
     // SPI Peripherals
-    
     uint1 spi0_en(0);
     uint1 spi0_rst(0);
     uint1 spi0_rclk = 0;
-    uint1 spi0_pll_rst(1);
-    spi_pll spi0_pll(
+    uint1 spi1_en(0);
+    uint1 spi1_rst(0);
+    uint1 spi1_rclk = 0;
+    uint1 spi_pll_rst(1);
+    spi_pll spi_pll(
         clk_25 <: clock,
-        rst_n <: spi0_pll_rst,
-        // Output clocks - Select one (apparently our SD card supports SPI 40MHz ~ 500kB/s (rclk = 80MHz) without init issues)
+        rst_n <: spi_pll_rst,
+        // Output clocks - Select on:
+        // - apparently our SD card supports SPI 40MHz ~ 500kB/s (rclk = 80MHz) without init issues)
+        // - OLED display works fine at 10MHz (rclk = 20MHz)
         //clk_160 :> spi0_rclk,
         clk_80 :> spi0_rclk,
-        //clk_10 :> spi0_rclk,
+        clk_20 :> spi1_rclk,
         //clk_5 :> spi0_rclk,
     );
     SpiMasterPeripheral spi0(
@@ -169,7 +167,18 @@ $$end
         spi_clk    :> sd_clk,
         spi_mosi   :> sd_mosi,
         spi_miso   <: sd_miso,
-        //debug_busy :> oled_resn, // TEMPORARY DEBUG
+    );
+    SpiMasterPeripheral spi1(
+        clk        <: clock,
+        rclk       <: spi1_rclk,
+        rst        <: spi1_rst,
+        //mem_addr   (prev_mem_addr[0,8]),
+        //mem_wr_data(prev_wdata),
+        //mem_wr_en  (prev_mem_rw),
+        //mem_rd_data(spi0.mem_rd_data),
+        spi_clk    :> oled_clk,
+        spi_mosi   :> oled_mosi,
+        // spi_miso   <: oled_miso, - no MISO for OLED
     );
     
 
@@ -228,13 +237,6 @@ $$end
 
 
     always { 
-        // DEBUG
-        oled_clk := sd_clk; 
-        oled_mosi := sd_mosi;
-        oled_dc = sd_miso;
-        oled_csn := sd_csn;
-        oled_resn := spi0_rclk;
-
         // Audio Switch - select between DAC and Audio Streamer outputs
         // audio_l = audio_streamer_en ? audio_streamer.audio_left_out : dac.audio_left_out;
         // audio_r = audio_streamer_en ? audio_streamer.audio_right_out : dac.audio_right_out;
@@ -243,8 +245,9 @@ $$end
         uint1 peripheral_en = prev_mem_addr[$periph_bit$,1]; // 100000000000000
         gpio_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000001); // GPIO at 0x10400 = 0b100000100000000
         dac_en  = peripheral_en & (prev_mem_addr[8, 6] == 6b000010); // DAC at 0x10800  = 0b100001000000000
-        spi0_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000011); // SPI0 at 0x10C00 = 0b100001100000000
-        audio_streamer_mem_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000100); // Audio Streamer at 0x11000 = 0b100010000000000
+        audio_streamer_mem_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000011); // Audio Streamer at 0x10C00 = 0b100001100000000
+        spi0_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000100); // SPI0 at 0x11000 = 0b100010000000000
+        spi1_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000101); // SPI1 at 0x11400 = 0b100010100000000
 
         // GPIO Peripheral memory-mapped I/O access
         gpio.mem_addr    = prev_mem_addr[0,8];
@@ -252,10 +255,13 @@ $$end
         gpio.mem_wr_en   = gpio_en ? prev_mem_rw : 4b0000; // only write when enabled
 
         // SPI0 Peripheral memory-mapped I/O access
-        
         spi0.mem_addr    = prev_mem_addr[0,8];
         spi0.mem_wr_data = prev_wdata;
         spi0.mem_wr_en   = spi0_en ? prev_mem_rw : 4b0000; // only write when enabled
+        // SPI1 Peripheral memory-mapped I/O access
+        spi1.mem_addr    = prev_mem_addr[0,8];
+        spi1.mem_wr_data = prev_wdata;
+        spi1.mem_wr_en   = spi1_en ? prev_mem_rw : 4b0000; // only write when enabled
 
         // DAC Peripheral memory-mapped I/O access
         dac.mem_addr    = prev_mem_addr[0,8];
@@ -271,6 +277,7 @@ $$end
         memio.rdata =   (~peripheral_en ? ram.rdata : 32b0)
                         | (peripheral_en & gpio_en ? gpio.mem_rd_data : 32b0)
                         | (peripheral_en & spi0_en ? spi0.mem_rd_data : 32b0)
+                        | (peripheral_en & spi1_en ? spi1.mem_rd_data : 32b0)
                         | (peripheral_en & audio_streamer_mem_en ? audio_streamer.mem_rd_data : 32b0);
         ram.wenable = memio.wenable & {4{~memio.addr[$periph_bit$,1]}};
         //                               ^^^^^^^ no write if on peripheral addresses
@@ -292,10 +299,13 @@ $$end
                 if (spi0_en) {
                     __display("[cycle %d] SPI0 access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
                 }
+                if (spi1_en) {
+                    __display("[cycle %d] SPI1 access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
+                }
                 if (audio_streamer_mem_en) {
                     __display("[cycle %d] AUDIO STREAMER access: %h(%b) < %h > <%h>",cycle,{prev_mem_addr, 2b00},prev_mem_rw,prev_wdata,memio.rdata);
                 }
-                if (~gpio_en & ~dac_en /*& ~display_peripheral_en*/ & ~spi0_en & ~audio_streamer_mem_en) {
+                if (~gpio_en & ~dac_en /*& ~display_peripheral_en*/ & ~spi0_en & ~spi1_en & ~audio_streamer_mem_en) {
                     __display("[cycle %d] Peripheral access to unknown address: %b",cycle,prev_mem_addr);
                 }
             }

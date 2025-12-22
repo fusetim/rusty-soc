@@ -1,10 +1,10 @@
 use core::convert::Infallible;
 
 use crate::gpio::{InputCapablePin, OutputCapablePin, SpiPins};
-use crate::pac::{self, Spi0 as PacSpi0};
+use crate::pac::{self, Spi0 as PacSpi0, Spi1 as PacSpi1};
 use crate::typesafe::Sealed;
 use embedded_hal::delay::DelayNs;
-use embedded_hal::spi::{ErrorType, SpiBus, SpiDevice};
+use embedded_hal::spi::{ErrorType, SpiBus};
 
 pub trait SpiPeripheral: Sealed + 'static {
     /// Get the register block for SPI
@@ -32,6 +32,25 @@ impl SpiPeripheral for Spi0 {
         // Safety: Only used for reading/writing SPI0 registers
         // Spi0 is a singleton peripheral
         unsafe { &*PacSpi0::ptr() }
+    }
+}
+
+pub struct Spi1 {
+    _inner: (),
+}
+
+impl Spi1 {
+    pub(crate) fn new() -> Self {
+        Self { _inner: () }
+    }
+}
+
+impl Sealed for Spi1 {}
+impl SpiPeripheral for Spi1 {
+    fn get_perif() -> &'static pac::spi0::RegisterBlock {
+        // Safety: Only used for reading/writing SPI1 registers
+        // Spi1 is a singleton peripheral
+        unsafe { &*PacSpi1::ptr() }
     }
 }
 

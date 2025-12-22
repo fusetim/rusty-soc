@@ -17,6 +17,7 @@ pub use riscv_rt::entry;
 pub struct Peripheral {
     pub gpio: gpio::Gpio,
     pub spi0: spi::Spi0,
+    pub spi1: spi::Spi1,
     pub dac: dac::AudioDac,
 }
 
@@ -24,6 +25,7 @@ pub fn init() -> Peripheral {
     Peripheral {
         gpio: gpio::Gpio::new(),
         spi0: spi::Spi0::new(),
+        spi1: spi::Spi1::new(),
         dac: dac::AudioDac::new(),
     }
 }
