@@ -625,6 +625,10 @@ impl Gpio {
             )),
         }
     }
+
+    pub unsafe fn steal() -> Self {
+        Self::new()
+    }
 }
 
 macro_rules! gpio_take_led {

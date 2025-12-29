@@ -13,6 +13,7 @@ embedded-hal-bus = { version = "0.3.0", default-features =  false, features = []
 embedded-sdmmc = { version = "0.9.0", default-features = false, features = [] }
 riscv-rt = { version = "0.17.0", features = ["single-hart"] }
 embedded-graphics = { version = "0.8.1" }
+simple-fatfs = { version = "0.1.0-alpha.2", default-features = false, features = [] }
 
 [profile.dev]
 panic = "immediate-abort"

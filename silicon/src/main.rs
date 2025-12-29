@@ -1,354 +1,43 @@
 #![no_std]
 #![no_main]
-use core::convert::Infallible;
 
-use embedded_graphics::prelude::{DrawTarget, Point, RgbColor, WebColors};
-use embedded_graphics::pixelcolor::Rgb565;
-use embedded_graphics::primitives::{Circle, PrimitiveStyle, PrimitiveStyleBuilder, StyledDrawable};
-use embedded_hal::digital::{InputPin, OutputPin, PinState};
-use embedded_hal_bus::spi::ExclusiveDevice;
-use embedded_sdmmc::{Mode, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
-use silicon_hal::audio::AudioStreamer;
-use silicon_hal::delay::IntrDelay;
-use silicon_hal::display::DisplayPeripheral;
-use silicon_hal::gpio::never_bank::NeverPin;
-use silicon_hal::gpio::spi_sdcard_bank::SpiSdCs;
-use silicon_hal::gpio::{self as _, Pin};
-use silicon_hal::spi::{Spi, Spi0};
-use silicon_hal::{audio};
-use silicon_hal::{
-    delay::{DelayNs, INTR_DELAY},
-    gpio::IntoPin as _,
-};
+use embedded_hal::delay::DelayNs;
+use embedded_hal::digital::OutputPin;
+use silicon_hal::{delay::INTR_DELAY, gpio::IntoPin as _};
+
+mod app;
+mod peripheral;
 
 #[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
-
-/*  SOFT SPI
-type TheSdCard = SdCard<
-    ExclusiveDevice<SpiSoft<SpiSdClk, SpiSdMosi, SpiSdMiso, IntrDelay>, Pin<SpiSdCs>, IntrDelay>,
-    IntrDelay,
->;
-*/
-// HARD SPI
-type TheSdCard = SdCard<ExclusiveDevice<Spi<Spi0, IntrDelay>, Pin<SpiSdCs>, IntrDelay>, IntrDelay>;
-
-/*
-#[silicon_hal::entry]
-fn main() -> ! {
-    let mut peripherals = silicon_hal::init();
-
-    let mut leds: [&mut dyn OutputPin<Error = Infallible>; 8] = {
-        let (led0, led1, led2, led3, led4, led5, led6, led7) =
-            peripherals.gpio.take_all_leds().unwrap();
-        [
-            &mut led0.into_pin(),
-            &mut led1.into_pin(),
-            &mut led2.into_pin(),
-            &mut led3.into_pin(),
-            &mut led4.into_pin(),
-            &mut led5.into_pin(),
-            &mut led6.into_pin(),
-            &mut led7.into_pin(),
-        ]
-    };
-
-    // SPI
-    let mut sd_cs = peripherals.gpio.take_spi_sd_cs().unwrap().into_pin();
-    /* SOFT SPI
-    let spi_sd: silicon_hal::gpio::SpiPins<SpiSdMosi, SpiSdClk, SpiSdMiso> = peripherals.gpio.take_spi_sd().unwrap();
-    let spi_soft = SpiSoft::new(spi_sd, INTR_DELAY);
-    sd_cs.set_high();
-    delay_ms(250);
-    let spi_sd = ExclusiveDevice::new(spi_soft, sd_cs, INTR_DELAY).unwrap();
-    */
-    // HARD SPI
-    let mut spi_hard = Spi::new(peripherals.spi0, INTR_DELAY);
-    sd_cs.set_high();
-    spi_hard.initialize();
-    delay_ms(250);
-    let spi_sd = ExclusiveDevice::new(spi_hard, sd_cs, INTR_DELAY).unwrap();
-    let mut sdcard: TheSdCard = SdCard::new(spi_sd, INTR_DELAY);
-
-    // Audio
-    let dac = peripherals.dac;
-    let mut audio_streamer = AudioStreamer::new_mono(dac).initialize();
-
+fn __panic(_info: &core::panic::PanicInfo) -> ! {
+    // In case of panic, just loop indefinitely
+    // Also try to get a led to light up or something -- unsafe but useful for debugging
+    let mut gpio = unsafe { silicon_hal::gpio::Gpio::steal() } ;
+    let mut led0 = gpio.take_led0().unwrap().into_pin();
+    let mut led7 = gpio.take_led7().unwrap().into_pin();
     loop {
-        // Init the LEDs
-        reset_leds(&mut leds);
-
-        leds[0].set_high();
-        delay_ms(1000);
-        leds[0].set_low();
-
-        // Init the SD card
-        let capacity = {
-            if let Ok(capacity) = sdcard.num_bytes() {
-                capacity
-            } else {
-                // SD card init failed, skip the rest of the loop
-                // Toggle LED7 to indicate error
-                leds[7].set_high();
-                delay_ms(500);
-                leds[7].set_low();
-                continue;
-            }
-        };
-
-        // Blink LEDs based on capacity (in GB)
-        {
-            let gb = capacity / (1024 * 1024 * 1024);
-            set_leds(
-                &mut leds,
-                &[
-                    gb & 0x01 != 0,
-                    gb & 0x02 != 0,
-                    gb & 0x04 != 0,
-                    gb & 0x08 != 0,
-                    gb & 0x10 != 0,
-                    gb & 0x20 != 0,
-                    gb & 0x40 != 0,
-                    gb & 0x80 != 0,
-                ],
-            );
-            delay_ms(1000);
-            reset_leds(&mut leds);
-        }
-
-        delay_ms(500);
-
-        // Output a test tone via DAC
-        //test_tone(&mut dac, &mut leds);
-
-        // Loading a music file from SD card and playing it via DAC
-        sdcard = play_file(&mut audio_streamer, &mut leds, sdcard);
-    }
-}
-*/
-
-// TESTING - DISPLAY ONLY
-#[silicon_hal::entry]
-fn main() -> ! {
-    let mut peripherals = silicon_hal::init();
-    let mut leds: [&mut dyn OutputPin<Error = Infallible>; 8] = {
-        let (led0, led1, led2, led3, led4, led5, led6, led7) =
-            peripherals.gpio.take_all_leds().unwrap();
-        [
-            &mut led0.into_pin(),
-            &mut led1.into_pin(),
-            &mut led2.into_pin(),
-            &mut led3.into_pin(),
-            &mut led4.into_pin(),
-            &mut led5.into_pin(),
-            &mut led6.into_pin(),
-            &mut led7.into_pin(),
-        ]
-    };
-
-    // Get the button pins
-    let mut btn1 = {
-        let btn1 = peripherals.gpio.take_btn1().unwrap();
-        btn1.into_pin()
-    };
-
-    // Get the OLED pins
-    let (oled_cs, oled_dc, oled_rst) = {
-        let (oled_cs, _, _, oled_dc, oled_rst) = peripherals.gpio.take_oled().unwrap();
-        (oled_cs.into_pin(), oled_dc.into_pin(), oled_rst.into_pin())
-    };
-    // Initialize the SPI
-    let mut oled_spi = Spi::new(peripherals.spi1, INTR_DELAY);
-    let oled_spi_cs = Pin::new_output(NeverPin(PinState::Low));
-    oled_spi.initialize();
-    delay_ms(250);
-    let oled_spi_device = ExclusiveDevice::new(oled_spi, oled_spi_cs, INTR_DELAY).unwrap();
-    // Create the display peripheral
-    let mut display = DisplayPeripheral::new(
-        oled_spi_device,
-        oled_cs,
-        oled_dc,
-        oled_rst,
-        INTR_DELAY.clone(),
-    );
-
-    loop {
-        for i in 0..8 {
-            reset_leds(&mut leds);
-            leds[i].set_high();
-            delay_ms(250);
-        }
-
-        reset_leds(&mut leds);
-
-        // Initialize the display
-        let mut _display = display.initialize().unwrap();
-        leds[0].set_high();
-        delay_ms(1000);
-
-        // Checkboard display calibration pattern
-        _display.display_calibration_pattern();
-
-        leds[1].set_high();
-        delay_ms(1000);
-
-        // Small test: clear the display and draw a purple circle in the center
-        _display.clear(Rgb565::WHITE);
-        let center = Point::new(64, 64);
-        let radius = 32;
-        let style = PrimitiveStyle::with_fill(Rgb565::CSS_AQUAMARINE);
-        Circle::with_center(center, radius).draw_styled(&style, &mut _display);
-
-        leds[2].set_high();
-        delay_ms(1000);
-
-        _display.clear(Rgb565::BLACK);
-        // Small test: small 60Hz animation : ball bouncing around
-        let ball_style = PrimitiveStyleBuilder::new()
-            .fill_color(Rgb565::CSS_ORANGE)
-            .stroke_color(Rgb565::BLACK)
-            .stroke_width(5)
-            .build();
-        let mut ball_pos = Point::new(32, 32); // Center of the ball
-        let mut ball_vel = Point::new(2, 3);
-        let ball_radius = 32;
-        for _ in 0..(60*10) {
-            // Update ball position
-            ball_pos.x += ball_vel.x;
-            ball_pos.y += ball_vel.y;
-            // Check for collisions with display edges
-            if ball_pos.x - ball_radius <= 0 || ball_pos.x + ball_radius >= 128 {
-                ball_vel.x = -ball_vel.x;
-            }
-            if ball_pos.y - ball_radius <= 0 || ball_pos.y + ball_radius >= 128 {
-                ball_vel.y = -ball_vel.y;
-            }
-            // Draw ball at new position
-            // Also clear the previous frame by adding a black outline covering the previous position
-            Circle::with_center(ball_pos, ball_radius as u32).draw_styled(&ball_style, &mut _display);
-            delay_ms(33); // ~30 FPS
-        }
-        // Wait for BTN1
-        while btn1.is_low().unwrap() {}
-
-        display = _display.disable();
+        led0.set_low();
+        led7.set_high();
+        INTR_DELAY.delay_ms(1000);
+        led7.set_low();
+        led0.set_high();
+        INTR_DELAY.delay_ms(1000);
     }
 }
 
-pub fn to_pin_state(state: bool) -> PinState {
-    if state { PinState::High } else { PinState::Low }
-}
+/// The main entry point of the program.
+#[silicon_hal::entry]
+fn main() -> ! {
+    let peripheral = silicon_hal::init();
+    let mut app_state = app::AppState::new(peripheral);
 
-#[inline(always)]
-pub fn delay_ms(ms: u32) {
-    #[allow(const_item_mutation)]
-    INTR_DELAY.delay_ms(ms);
-}
-
-pub fn reset_leds(led_pins: &mut [&mut dyn OutputPin<Error = Infallible>]) {
-    set_leds(&mut led_pins[..], &[false; 8]);
-}
-
-pub fn set_leds(led_pins: &mut [&mut dyn OutputPin<Error = Infallible>], states: &[bool]) {
-    for (pin, &state) in led_pins.iter_mut().zip(states.iter()) {
-        if state {
-            pin.set_high();
+    loop {
+        if let Some(new_state) = app_state.run() {
+            app_state = new_state;
         } else {
-            pin.set_low();
-        }
-    }
-}
-
-struct ZeroTimeSource;
-impl TimeSource for ZeroTimeSource {
-    #[inline(always)]
-    fn get_timestamp(&self) -> Timestamp {
-        Timestamp {
-            year_since_1970: 10,
-            zero_indexed_month: 0,
-            zero_indexed_day: 0,
-            hours: 0,
-            minutes: 0,
-            seconds: 0,
-        }
-    }
-}
-
-#[inline(never)]
-pub fn play_file(
-    streamer: &mut AudioStreamer<audio::Mono, audio::Initialized>,
-    leds: &mut [&mut dyn OutputPin<Error = Infallible>],
-    sdcard: TheSdCard,
-) -> TheSdCard {
-    // Open the fat filesystem
-    let volume_mgr: VolumeManager<_, _, 1, 1, 1> =
-        VolumeManager::new_with_limits(sdcard, ZeroTimeSource, 0);
-    let Ok(volume0) = volume_mgr.open_raw_volume(VolumeIdx(0)) else {
-        // Failed to open volume, indicate error via LED7
-        leds[7].set_high();
-        delay_ms(500);
-        leds[7].set_low();
-        return volume_mgr.free().0;
-    };
-    // Volume opened successfully
-    leds[1].set_high();
-
-    let Ok(root_dir) = volume_mgr.open_root_dir(volume0) else {
-        // Failed to open root directory, indicate error via LED7
-        leds[6].set_high();
-        delay_ms(500);
-        leds[6].set_low();
-        return volume_mgr.free().0;
-    };
-
-    // Root directory opened successfully
-    leds[2].set_high();
-
-    let Ok(my_file) = volume_mgr.open_file_in_dir(root_dir, "music.raw", Mode::ReadOnly) else {
-        // Failed to open file, indicate error via LED7
-        leds[5].set_high();
-        delay_ms(500);
-        leds[5].set_low();
-        volume_mgr.close_dir(root_dir);
-        return volume_mgr.free().0;
-    };
-
-    leds[3].set_high();
-
-    // Read to the end of the file
-    let mut buffer = [0u8; 512];
-    loop {
-        let Ok(bytes_read) = volume_mgr.read(my_file.clone(), &mut buffer) else {
-            // Read error, indicate via LED7
-            leds[7].set_high();
-            leds[6].set_high();
-            delay_ms(500);
-            leds[7].set_low();
-            leds[6].set_low();
-            break;
-        };
-        if bytes_read == 0 {
-            // End of file reached
             break;
         }
-
-        let mut toggle_led5 = false;
-        let mut tx = 0;
-        // Process the read data (e.g., send to DAC)
-        while tx < bytes_read {
-            tx += streamer.write_samples(&buffer[tx..bytes_read]);
-            toggle_led5 = !toggle_led5;
-            leds[5].set_state(to_pin_state(toggle_led5));
-        }
     }
 
-    let _ = streamer.write_sample(0);
-    reset_leds(leds);
-    leds[4].set_high();
-
-    delay_ms(1000);
-    volume_mgr.close_dir(root_dir);
-    volume_mgr.free().0
+    loop {}
 }
