@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "silicon",
+    "silicon", "silicon-fat",
     "silicon-hal",
     "silicon-pac",
 ]

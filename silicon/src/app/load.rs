@@ -5,8 +5,26 @@ use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle, StrokeAlignment};
 use embedded_graphics::text::renderer::CharacterStyle;
-use embedded_graphics::text::{Text, TextStyle};
+use embedded_graphics::text::{Text, TextStyle, TextStyleBuilder};
 use embedded_hal::digital::OutputPin;
+use embedded_sdmmc::{LfnBuffer, TimeSource, Timestamp, VolumeIdx, VolumeManager};
+use silicon_hal::delay::INTR_DELAY;
+use embedded_hal::delay::DelayNs;
+
+struct ZeroTimeSource;
+impl TimeSource for ZeroTimeSource {
+    #[inline(always)]
+    fn get_timestamp(&self) -> Timestamp {
+        Timestamp {
+            year_since_1970: 10,
+            zero_indexed_month: 0,
+            zero_indexed_day: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        }
+    }
+}
 
 /// Run the loading state logic.
 ///
@@ -29,106 +47,78 @@ pub fn run_loading(state: AppState) -> Option<AppState> {
         let mut leds = loading_state.leds;
         let mut sdcard = loading_state.sdcard;
 
-        // Loading bar
-        let outer_rect_origin = Point::new(34, 98);
-        let outer_rect_size = Size::new(60, 12);
-        let outer_rect = Rectangle::new(outer_rect_origin, outer_rect_size);
-        let outer_rect_style = PrimitiveStyleBuilder::new()
-            .stroke_color(Rgb565::WHITE)
-            .stroke_width(1)
-            .stroke_alignment(StrokeAlignment::Outside)
-            .build();
+        if let Ok(cap) = sdcard.num_bytes() {
+            let mut buf = [0u8; 10];
+            let cap_str = format_sd_capacity_bytes(cap, &mut buf);
 
-        let inner_rect_origin = Point::new(36, 100);
-        let inner_rect_max_size = Size::new(56, 8);
-        let inner_rect_style = PrimitiveStyleBuilder::new()
-            .fill_color(Rgb565::CSS_PURPLE)
-            .build();
+            let mut carstyle = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
+            carstyle.background_color = Some(Rgb565::BLACK);
 
-        let mut character_style = MonoTextStyle::new(&FONT_10X20, Rgb565::CSS_PURPLE);
-        character_style.set_background_color(Some(Rgb565::BLACK));
+            display.clear(Rgb565::BLACK).ok()?;
 
-        // Debug info
-        let mut sd_cap = None;
-
-
-        // The current progress percentage
-        let mut progress = 0;
-        'running: loop {
-            // Update LED status
-            leds.set_all_states([
-                progress >= 12,
-                progress >= 25,
-                progress >= 37,
-                progress >= 50,
-                progress >= 62,
-                progress >= 75,
-                progress >= 87,
-                progress >= 100,
-            ]);
-
-            // Clear display and draw loading elements, when progress is 0
-            if progress == 0 {
-                display.clear(Rgb565::BLACK);
-
-                // Draw the outer rectangle
-                outer_rect.into_styled(outer_rect_style).draw(&mut display);
-            }
-
-            // Draw centered text.
-            {
-                let mut textbuf = [0u8; 4];
-                let text = format_loading_percentage(progress, &mut textbuf);
-                Text::with_text_style(
-                    &text,
-                    display.bounding_box().center(),
-                    character_style,
-                    TextStyle::default(),
-                )
+            Text::new(cap_str, Point::new(0, 20), carstyle)
                 .draw(&mut display);
-            }
 
-            // Debug info
-            if let Some(cap) = sd_cap {
-                // Display SDCard capacity
-                let mut cap_buf = [0u8; 10]; // Enough for "XXX XXX MB"
-                let cap_str = format_sd_capacity_bytes(cap, &mut cap_buf);
-                Text::with_text_style(
-                    &cap_str,
-                    Point::new(20, 20),
-                    character_style,
-                    TextStyle::default(),
-                ).draw(&mut display);
-            }
+            // Open first volume
+            let time_source = ZeroTimeSource;
+            let mut mgr = VolumeManager::new(sdcard, time_source);
+            let indexZero= VolumeIdx(0);
+            if let Ok(vol) =  mgr.open_volume(indexZero) {
+                // Successfully opened volume
+                leds.set_all_low();
+                leds.led4.set_high(); // Indicate success
+                INTR_DELAY.delay_ms(1000);
 
-            // Draw the loading bar
-            {
-                let filled_width = (inner_rect_max_size.width * progress as u32) / 100;
-                let inner_rect = Rectangle::new(
-                    inner_rect_origin,
-                    Size::new(filled_width, inner_rect_max_size.height),
-                );
-                inner_rect.into_styled(inner_rect_style).draw(&mut display);
-            }
-
-            // Do progress
-            if progress == 10 {
-                // Initialize the SDCard by getting its size
-                if let Ok(cap) = sdcard.num_bytes() {
-                    sd_cap = Some(cap);
-                } else {
-                    // SDCard error
+                // Open root directory, list files, etc.
+                if let Ok(root_dir) = vol.open_root_dir() {
+                    // Successfully opened root directory
                     leds.set_all_low();
-                    leds.led3.set_high(); // SDCard error
-                    break 'running;
+                    leds.led5.set_high(); // Indicate success
+                    INTR_DELAY.delay_ms(1000);
+
+                    // List files, load data, etc.
+                    let mut entries = [['.' as u8; 10]; 6];
+                    let mut count = 0;
+                    let mut buf = [0u8; 32];
+                    let mut lfn_buffer = LfnBuffer::new(&mut buf);
+                    root_dir.iterate_dir_lfn(&mut lfn_buffer, |entry, name| {
+                        if count < entries.len() {
+                            if let Some(name) = name {
+                                entries[count].copy_from_slice(name.as_bytes());
+                                count += 1;
+                            }
+                        }
+                    });
+
+                    // Successfully opened root directory
+                    leds.set_all_low();
+                    leds.led6.set_high(); // Indicate success
+                    INTR_DELAY.delay_ms(1000);
+
+                    if count > 0 {
+                        for i in 0..count {
+                            let name = core::str::from_utf8(&entries[i]).unwrap_or("???????");
+                            let y = 40 + (i as i32) * 20;
+                            if y > 120 {
+                                break;
+                            }
+                            Text::new(name, Point::new(0, y), carstyle)
+                                .draw(&mut display);
+                        }
+                    }
+
+                    leds.led2.set_high(); // Indicate success
+                    INTR_DELAY.delay_ms(1000);
                 }
             }
-            
-            progress += 1;
-            if progress > 100 {
-                break 'running;
-            }
-        }
+
+
+            loop {}
+        } else {
+            leds.set_all_low();
+            leds.led1.set_high(); // Indicate error
+            INTR_DELAY.delay_ms(1000);
+        };
     }
     None
 }

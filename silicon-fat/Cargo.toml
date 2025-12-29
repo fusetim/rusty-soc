@@ -1,0 +1,8 @@
+[package]
+name = "silicon-fat"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# simple-fatfs = { git = "https://github.com/Oakchris1955/simple-fatfs.git", branch = "main", features = [], default-features = false }
+embedded-sdmmc = { version = "0.9.0", default-features = false, features = [] }
