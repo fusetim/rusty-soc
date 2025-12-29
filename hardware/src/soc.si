@@ -25,9 +25,10 @@ $include('./display.si')
 // Setup memory size
 // - addrW is the address bus width
 // - the topmost bit is used to indicate peripheral access
-// - we thus allocate 2^(addrW-1) uint32 of RAM
+// - actual RAM size is 80kB (20480 words = 81920 bytes)
 // - See ../svd.xml for memory map
-$$addrW      = 15
+$$addrW      = 16
+$$ramDepth   = 20480
 $$periph_bit = addrW-1
 // Configure BRAM (needed for write mask)
 $$config['bram_wmask_byte_wenable_width'] = 'data'
@@ -242,12 +243,12 @@ $$end
         // audio_r = audio_streamer_en ? audio_streamer.audio_right_out : dac.audio_right_out;
 
         // Peripheral enable signals
-        uint1 peripheral_en = prev_mem_addr[$periph_bit$,1]; // 100000000000000
-        gpio_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000001); // GPIO at 0x10400 = 0b100000100000000
-        dac_en  = peripheral_en & (prev_mem_addr[8, 6] == 6b000010); // DAC at 0x10800  = 0b100001000000000
-        audio_streamer_mem_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000011); // Audio Streamer at 0x10C00 = 0b100001100000000
-        spi0_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000100); // SPI0 at 0x11000 = 0b100010000000000
-        spi1_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000101); // SPI1 at 0x11400 = 0b100010100000000
+        uint1 peripheral_en = prev_mem_addr[$periph_bit$,1]; // base address: 1000000000000000 - 0x20000
+        gpio_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000001); // GPIO at 0x20400 = 0b1000000100000000
+        dac_en  = peripheral_en & (prev_mem_addr[8, 6] == 6b000010); // DAC at 0x20800  = 0b1000001000000000
+        audio_streamer_mem_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000011); // Audio Streamer at 0x20C00 = 0b1000001100000000
+        spi0_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000100); // SPI0 at 0x21000 = 0b1000010000000000
+        spi1_en = peripheral_en & (prev_mem_addr[8, 6] == 6b000101); // SPI1 at 0x21400 = 0b1000010100000000
 
         // GPIO Peripheral memory-mapped I/O access
         gpio.mem_addr    = prev_mem_addr[0,8];

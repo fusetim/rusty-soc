@@ -22,7 +22,7 @@ pub union Vector {
 #[unsafe(no_mangle)]
 pub static __EXTERNAL_INTERRUPTS: [Vector; 0] = [];
 #[doc = "Timer0 peripheral (64-bit counter) at 1MHz."]
-pub type Timer0 = crate::Periph<timer0::RegisterBlock, 0x0001_0000>;
+pub type Timer0 = crate::Periph<timer0::RegisterBlock, 0x0002_0000>;
 impl core::fmt::Debug for Timer0 {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer0").finish()
@@ -31,7 +31,7 @@ impl core::fmt::Debug for Timer0 {
 #[doc = "Timer0 peripheral (64-bit counter) at 1MHz."]
 pub mod timer0;
 #[doc = "General Purposes Input / Output"]
-pub type Gpio = crate::Periph<gpio::RegisterBlock, 0x0001_0400>;
+pub type Gpio = crate::Periph<gpio::RegisterBlock, 0x0002_0400>;
 impl core::fmt::Debug for Gpio {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Gpio").finish()
@@ -40,7 +40,7 @@ impl core::fmt::Debug for Gpio {
 #[doc = "General Purposes Input / Output"]
 pub mod gpio;
 #[doc = "On-board Digital-to-Analog Converter, directly wired to the Audio interface."]
-pub type Dac = crate::Periph<dac::RegisterBlock, 0x0001_0800>;
+pub type Dac = crate::Periph<dac::RegisterBlock, 0x0002_0800>;
 impl core::fmt::Debug for Dac {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Dac").finish()
@@ -49,7 +49,7 @@ impl core::fmt::Debug for Dac {
 #[doc = "On-board Digital-to-Analog Converter, directly wired to the Audio interface."]
 pub mod dac;
 #[doc = "On-board Audio Streamer (all-pipelined FIFO buffer + DAC), directly wired to the Audio interface."]
-pub type AudioStreamer = crate::Periph<audio_streamer::RegisterBlock, 0x0001_0c00>;
+pub type AudioStreamer = crate::Periph<audio_streamer::RegisterBlock, 0x0002_0c00>;
 impl core::fmt::Debug for AudioStreamer {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("AudioStreamer").finish()
@@ -58,7 +58,7 @@ impl core::fmt::Debug for AudioStreamer {
 #[doc = "On-board Audio Streamer (all-pipelined FIFO buffer + DAC), directly wired to the Audio interface."]
 pub mod audio_streamer;
 #[doc = "On-board SPI0 interface (only SPI Master)."]
-pub type Spi0 = crate::Periph<spi0::RegisterBlock, 0x0001_1000>;
+pub type Spi0 = crate::Periph<spi0::RegisterBlock, 0x0002_1000>;
 impl core::fmt::Debug for Spi0 {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Spi0").finish()
@@ -67,7 +67,7 @@ impl core::fmt::Debug for Spi0 {
 #[doc = "On-board SPI0 interface (only SPI Master)."]
 pub mod spi0;
 #[doc = "On-board SPI1 interface (only SPI Master)."]
-pub type Spi1 = crate::Periph<spi0::RegisterBlock, 0x0001_1400>;
+pub type Spi1 = crate::Periph<spi0::RegisterBlock, 0x0002_1400>;
 impl core::fmt::Debug for Spi1 {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Spi1").finish()
@@ -76,7 +76,7 @@ impl core::fmt::Debug for Spi1 {
 #[doc = "On-board SPI1 interface (only SPI Master)."]
 pub use self::spi0 as spi1;
 #[doc = "On-board Display interface, with hardware Framebuffer (128x128, RGB565)."]
-pub type Display = crate::Periph<display::RegisterBlock, 0x0001_7c00>;
+pub type Display = crate::Periph<display::RegisterBlock, 0x0002_7c00>;
 impl core::fmt::Debug for Display {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Display").finish()

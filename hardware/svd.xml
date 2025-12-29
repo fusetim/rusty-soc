@@ -15,16 +15,16 @@
     <addressUnitBits>8</addressUnitBits>
     <width>32</width>
     <peripherals>
-        <!-- Peripheral Base Address : 0x10000 -->
+        <!-- Peripheral Base Address : 0x20000 -->
         <!-- Standard peripheral inherits 8 bit for addressing 32-bit words/registers -->
         <!-- Except Display which comes with a Hardware Framebuffer -->
 
         <!-- Peripherals > TIMERS > Timer0 -->
         <peripheral>
-            <!-- Timer0 Base Address is : 0x10000 + 0x000 (len: 0x400)-->
+            <!-- Timer0 Base Address is : 0x20000 + 0x000 (len: 0x400)-->
             <name>Timer0</name>
             <description>Timer0 peripheral (64-bit counter) at 1MHz.</description>
-            <baseAddress>0x10000</baseAddress>
+            <baseAddress>0x20000</baseAddress>
             <groupName>Timer</groupName>
             <addressBlock>
                 <offset>0x0</offset>
@@ -82,10 +82,10 @@
 
         <!-- Peripherals > GPIO -->
         <peripheral>
-            <!-- GPIO Base Address is : 0x10000 + 0x400 (len: 0x400)-->
+            <!-- GPIO Base Address is : 0x20000 + 0x400 (len: 0x400)-->
             <name>GPIO</name>
             <description>General Purposes Input / Output</description>
-            <baseAddress>0x10400</baseAddress>
+            <baseAddress>0x20400</baseAddress>
             <groupName>GPIO</groupName>
             <addressBlock>
                 <offset>0x0</offset>
@@ -277,10 +277,10 @@
 
         <!-- Peripherals > DAC -->
         <peripheral>
-            <!-- DAC Base Address is : 0x10000 + 0x800 (len: 0x400)-->
+            <!-- DAC Base Address is : 0x20000 + 0x800 (len: 0x400)-->
             <name>DAC</name>
             <description>On-board Digital-to-Analog Converter, directly wired to the Audio interface.</description>
-            <baseAddress>0x10800</baseAddress>
+            <baseAddress>0x20800</baseAddress>
             <addressBlock>
                 <offset>0x0</offset>
                 <size>0x04</size>
@@ -346,10 +346,10 @@
 
         <!-- Peripherals > AudioStreamer -->
         <peripheral>
-            <!-- DAC Base Address is : 0x10000 + 0x0C00 (len: 0x400)-->
+            <!-- DAC Base Address is : 0x20000 + 0x0C00 (len: 0x400)-->
             <name>AudioStreamer</name>
             <description>On-board Audio Streamer (all-pipelined FIFO buffer + DAC), directly wired to the Audio interface.</description>
-            <baseAddress>0x10C00</baseAddress>
+            <baseAddress>0x20C00</baseAddress>
             <addressBlock>
                 <offset>0x0</offset>
                 <size>0x08</size>
@@ -466,10 +466,10 @@
 
         <!-- Peripherals > SPI0 -->
         <peripheral>
-            <!-- SPI0 Base Address is : 0x10000 + 0x1000 (len: 0x400)-->
+            <!-- SPI0 Base Address is : 0x20000 + 0x1000 (len: 0x400)-->
             <name>SPI0</name>
             <description>On-board SPI0 interface (only SPI Master).</description>
-            <baseAddress>0x11000</baseAddress>
+            <baseAddress>0x21000</baseAddress>
             <addressBlock>
                 <offset>0x0</offset>
                 <size>0x14</size>
@@ -601,15 +601,15 @@
         <peripheral derivedFrom="SPI0">
             <name>SPI1</name>
             <description>On-board SPI1 interface (only SPI Master).</description>
-            <baseAddress>0x11400</baseAddress>
+            <baseAddress>0x21400</baseAddress>
         </peripheral>
 
         <!-- Peripherals > Display -->
         <peripheral>
-            <!-- Display Base Address is : 0x10000 + 0x7c00 (len: 0x8400)-->
+            <!-- Display Base Address is : 0x20000 + 0x7c00 (len: 0x8400)-->
             <name>Display</name>
             <description>On-board Display interface, with hardware Framebuffer (128x128, RGB565).</description>
-            <baseAddress>0x17c00</baseAddress>
+            <baseAddress>0x27c00</baseAddress>
             <addressBlock>
                 <offset>0x0</offset>
                 <size>0x08</size>
