@@ -2,17 +2,20 @@
 #![no_main]
 use core::convert::Infallible;
 
+use embedded_graphics::prelude::{DrawTarget, Point, RgbColor, WebColors};
+use embedded_graphics::pixelcolor::Rgb565;
+use embedded_graphics::primitives::{Circle, PrimitiveStyle, PrimitiveStyleBuilder, StyledDrawable};
 use embedded_hal::digital::{InputPin, OutputPin, PinState};
 use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{Mode, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
 use silicon_hal::audio::AudioStreamer;
 use silicon_hal::delay::IntrDelay;
 use silicon_hal::display::DisplayPeripheral;
-use silicon_hal::gpio::{Pin, self as _};
 use silicon_hal::gpio::never_bank::NeverPin;
 use silicon_hal::gpio::spi_sdcard_bank::SpiSdCs;
+use silicon_hal::gpio::{self as _, Pin};
 use silicon_hal::spi::{Spi, Spi0};
-use silicon_hal::{audio, dac};
+use silicon_hal::{audio};
 use silicon_hal::{
     delay::{DelayNs, INTR_DELAY},
     gpio::IntoPin as _,
@@ -161,11 +164,7 @@ fn main() -> ! {
     let oled_spi_cs = Pin::new_output(NeverPin(PinState::Low));
     oled_spi.initialize();
     delay_ms(250);
-    let oled_spi_device = ExclusiveDevice::new(
-        oled_spi,
-        oled_spi_cs,
-        INTR_DELAY,
-    ).unwrap();
+    let oled_spi_device = ExclusiveDevice::new(oled_spi, oled_spi_cs, INTR_DELAY).unwrap();
     // Create the display peripheral
     let mut display = DisplayPeripheral::new(
         oled_spi_device,
@@ -185,16 +184,56 @@ fn main() -> ! {
         reset_leds(&mut leds);
 
         // Initialize the display
-        let _display = display.initialize().unwrap();
+        let mut _display = display.initialize().unwrap();
         leds[0].set_high();
         delay_ms(1000);
 
-        // Wait for BTN1 
+        // Checkboard display calibration pattern
+        _display.display_calibration_pattern();
+
+        leds[1].set_high();
+        delay_ms(1000);
+
+        // Small test: clear the display and draw a purple circle in the center
+        _display.clear(Rgb565::WHITE);
+        let center = Point::new(64, 64);
+        let radius = 32;
+        let style = PrimitiveStyle::with_fill(Rgb565::CSS_AQUAMARINE);
+        Circle::with_center(center, radius).draw_styled(&style, &mut _display);
+
+        leds[2].set_high();
+        delay_ms(1000);
+
+        _display.clear(Rgb565::BLACK);
+        // Small test: small 60Hz animation : ball bouncing around
+        let ball_style = PrimitiveStyleBuilder::new()
+            .fill_color(Rgb565::CSS_ORANGE)
+            .stroke_color(Rgb565::BLACK)
+            .stroke_width(5)
+            .build();
+        let mut ball_pos = Point::new(32, 32); // Center of the ball
+        let mut ball_vel = Point::new(2, 3);
+        let ball_radius = 32;
+        for _ in 0..(60*10) {
+            // Update ball position
+            ball_pos.x += ball_vel.x;
+            ball_pos.y += ball_vel.y;
+            // Check for collisions with display edges
+            if ball_pos.x - ball_radius <= 0 || ball_pos.x + ball_radius >= 128 {
+                ball_vel.x = -ball_vel.x;
+            }
+            if ball_pos.y - ball_radius <= 0 || ball_pos.y + ball_radius >= 128 {
+                ball_vel.y = -ball_vel.y;
+            }
+            // Draw ball at new position
+            // Also clear the previous frame by adding a black outline covering the previous position
+            Circle::with_center(ball_pos, ball_radius as u32).draw_styled(&ball_style, &mut _display);
+            delay_ms(33); // ~30 FPS
+        }
+        // Wait for BTN1
         while btn1.is_low().unwrap() {}
 
-        leds[0].set_low();
         display = _display.disable();
-
     }
 }
 
@@ -298,7 +337,7 @@ pub fn play_file(
         let mut toggle_led5 = false;
         let mut tx = 0;
         // Process the read data (e.g., send to DAC)
-        while (tx < bytes_read) {
+        while tx < bytes_read {
             tx += streamer.write_samples(&buffer[tx..bytes_read]);
             toggle_led5 = !toggle_led5;
             leds[5].set_state(to_pin_state(toggle_led5));

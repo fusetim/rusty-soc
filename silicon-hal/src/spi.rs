@@ -129,7 +129,8 @@ where
             // Write the Tx byte to send, this will also start the transfer
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(word) });
-            self.delayer.delay_ns(self.peripheral.get_inter_symbol_delay());
+            self.delayer
+                .delay_ns(self.peripheral.get_inter_symbol_delay());
         }
         Ok(())
     }
@@ -143,7 +144,8 @@ where
             // Write the Tx byte to send, this will also start the transfer
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(write[i]) });
-            self.delayer.delay_ns(self.peripheral.get_inter_symbol_delay());
+            self.delayer
+                .delay_ns(self.peripheral.get_inter_symbol_delay());
             // Wait until data is ready
             loop {
                 let read_and_status = spi.read_and_status().read();
@@ -171,8 +173,9 @@ where
             // Write the Tx byte to send, this will also start the transfer
             spi.write_data()
                 .write(|w: &mut pac::spi0::write_data::W| unsafe { w.bits(*word) });
-            // Wait a bit for the first bits to be sent 
-            self.delayer.delay_ns(self.peripheral.get_inter_symbol_delay());
+            // Wait a bit for the first bits to be sent
+            self.delayer
+                .delay_ns(self.peripheral.get_inter_symbol_delay());
             // Wait until data is ready
             loop {
                 let read_and_status = spi.read_and_status().read();
@@ -190,7 +193,8 @@ where
     fn flush(&mut self) -> Result<(), Self::Error> {
         // Flush -- ensure the SPI peripheral status is not busy
         let spi = P::get_perif();
-        self.delayer.delay_ns(self.peripheral.get_inter_symbol_delay());
+        self.delayer
+            .delay_ns(self.peripheral.get_inter_symbol_delay());
         while spi.status().read().busy().bit_is_set() {}
         Ok(())
     }

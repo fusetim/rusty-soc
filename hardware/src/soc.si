@@ -310,6 +310,16 @@ $$end
                     __display("[cycle %d] Peripheral access to unknown address: %b",cycle,prev_mem_addr);
                 }
             }
+            if (~peripheral_en) { // RAM access
+                // Keep track of the stack accesses
+                if (prev_mem_addr > $addrW$h4c00 && prev_mem_addr <= $addrW$h4fff) {
+                    __display("[cycle %d] STACK ACCESS at SP=%h",cycle,prev_mem_addr);
+                }
+                // RAM ends at address 0x13fff (81920 bytes)
+                if (prev_mem_addr > $addrW$h4fff) {
+                    __display("[cycle %d] WARNING: RAM access out of bounds: %h",cycle,prev_mem_addr);
+                }
+            }
         $$end
 
         // Update previous memory access info

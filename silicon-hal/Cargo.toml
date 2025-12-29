@@ -8,9 +8,11 @@ embedded-hal = "1"
 fugit = "0.3.9"
 paste = "1.0"
 silicon-pac = { path = "../silicon-pac" }
-riscv-rt = { version = "0.16", optional = true }
+riscv-rt = { version = "0.17", optional = true }
 bitfield = "0.19.4"
+embedded-graphics-core = { version = "0.4", optional =  true }
 
 [features]
-default = []
+default = ["graphics"]
 rt = ["silicon-pac/rt", "riscv-rt"]
+graphics = ["dep:embedded-graphics-core"]
