@@ -3,7 +3,7 @@
 //! This module provides types and functions for working with the Master Boot Record (MBR)
 //! partitioning scheme, commonly used on storage devices like SD cards.
 //!
-//! Given a [BlockDevice](embedded_sdmmc::BlockDevice), you can read the MBR from the first sector
+//! Given a [BlockDevice], you can read the MBR from the first sector
 //! of the device, parse the partition table, and access individual partitions.
 //!
 //! This module is widely inspired by the [VolumeManager](embedded_sdmmc::VolumeManager) from the embedded-sdmmc crate,
@@ -11,13 +11,27 @@
 //! implementation for embedded systems.
 
 use core::mem;
-use embedded_sdmmc::{BlockDevice, Volume};
-use crate::block::{self, Block, BlockIdx, BlockCount};
+use simple_fatfs::{block_io::{BlockBase, BlockRead}, io::{Error, ErrorType}};
+
+use crate::block::{Block, BlockIdx, BlockCount, BlockDevice};
 
 /// In the MBR block, the following should be present, otherwise it is not 
 /// an MBR partition table.
 pub(crate) const MBR_SIGNATURE : [u8; 2] = [0x55, 0xAA];
 
+/// A volume (partition) on the block device.
+/// 
+/// This struct represents a specific volume (partition) on the block device,
+/// allowing access to its information and the underlying block device.
+pub struct Volume<'a, D: BlockDevice> {
+    volume_info: VolumeInfo,
+    block_device: &'a mut D,
+}
+
+/// Information about a volume (partition) on the block device.
+/// 
+/// This struct contains details about a specific volume, including its index,
+/// starting block, and length in blocks.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct VolumeInfo {
     pub index: VolumeIdx,
@@ -32,7 +46,7 @@ pub struct VolumeInfo {
 ///
 /// In particular, it allows you to open volumes by their index and access
 /// their partition information.
-pub struct VolumeManager<D: embedded_sdmmc::BlockDevice> {
+pub struct VolumeManager<D: BlockDevice> {
     block_device: D,
 }
 
@@ -43,7 +57,7 @@ pub struct VolumeManager<D: embedded_sdmmc::BlockDevice> {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VolumeIdx(pub u8);
 
-impl<D: embedded_sdmmc::BlockDevice> VolumeManager<D> {
+impl<D: BlockDevice> VolumeManager<D> {
     /// Create a new VolumeManager for the given block device.
     ///
     /// # Arguments
@@ -62,7 +76,7 @@ impl<D: embedded_sdmmc::BlockDevice> VolumeManager<D> {
     /// # Returns
     ///
     /// * `Result<VolumeInfo, embedded_sdmmc::Error>` - The opened volume or an error.
-    pub fn get_volume(&mut self, volume_idx: VolumeIdx) -> Result<VolumeInfo, <D as BlockDevice>::Error> {
+    pub fn get_volume_info(&mut self, volume_idx: VolumeIdx) -> Result<VolumeInfo, <D as BlockDevice>::Error> {
         // Read the MBR from the first sector
         let mut blocks = [Block::new()];
         self.block_device.read(&mut blocks, BlockIdx(0))?;
@@ -96,6 +110,75 @@ impl<D: embedded_sdmmc::BlockDevice> VolumeManager<D> {
             block_start: lba_start,
             block_len: total_sectors,
         })
+    }
+
+    pub fn open_volume<'a>(&'a mut self, volume_idx: VolumeIdx) -> Result<Volume<'a, D>, <D as BlockDevice>::Error> {
+        let volume_info = self.get_volume_info(volume_idx)?;
+
+        Ok(Volume {
+            volume_info: volume_info,
+            block_device: &mut self.block_device,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub enum VolumeError<BDE: core::fmt::Debug> {
+    BlockDeviceError(
+        BDE
+    ),
+}
+
+impl <BDE: core::fmt::Debug> Error for VolumeError<BDE> {
+    fn kind(&self) -> simple_fatfs::io::ErrorKind {
+        match self {
+            VolumeError::BlockDeviceError(_) => simple_fatfs::io::ErrorKind::Other,
+        }
+    }
+}
+
+impl<'a, D: BlockDevice> Volume<'a, D> {
+    /// Get the volume information.
+    pub fn info(&self) -> &VolumeInfo {
+        &self.volume_info
+    }
+
+    /// Get a mutable reference to the underlying block device.
+    pub fn inner_device(&mut self) -> &mut D {
+        self.block_device
+    }
+}
+
+impl<'a, D: BlockDevice> ErrorType for Volume<'a, D> {
+    type Error = VolumeError<D::Error>;
+}
+
+impl<'a, D: BlockDevice> BlockBase for Volume<'a, D> {
+    fn block_size(&self) -> usize {
+        512
+    }
+
+    fn block_count(&self) -> usize {
+        self.volume_info.block_len.0 as usize
+    }
+}
+
+impl<'a, D: BlockDevice> BlockRead for Volume<'a, D> {
+    fn read(&mut self, block: simple_fatfs::block_io::BlockIndex, buf: &mut [u8]) -> Result<(), Self::Error> {
+        let absolute_block_idx = BlockIdx(self.volume_info.block_start.0 + block as u32);
+
+        let mut temp_block = [Block::new()];
+        let mut cursor = 0; // cursor in block (of 512 bytes)
+        while (cursor*512) < buf.len() {
+            // TODO: Evaluate if it is better to read multiple blocks at once (normally it should, but it also increases stack usage)
+            self.block_device.read(&mut temp_block, absolute_block_idx)
+                .map_err(VolumeError::BlockDeviceError)?;
+            let bytes_to_copy = core::cmp::min(512, buf.len() - (cursor * 512));
+            buf[cursor*512..cursor*512 + bytes_to_copy]
+                .copy_from_slice(&temp_block[0].as_ref()[0..bytes_to_copy]);
+            cursor += 1;
+        }
+        Ok(())
     }
 }
 

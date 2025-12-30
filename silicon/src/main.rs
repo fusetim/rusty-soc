@@ -1,12 +1,19 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
+use embedded_alloc::LlffHeap as Heap;
+
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use silicon_hal::{delay::INTR_DELAY, gpio::IntoPin as _};
 
 mod app;
 mod peripheral;
+
+#[global_allocator]
+static HEAP: Heap = Heap::empty();
 
 #[panic_handler]
 fn __panic(_info: &core::panic::PanicInfo) -> ! {

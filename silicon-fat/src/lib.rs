@@ -10,3 +10,7 @@ pub mod sd {
     pub use embedded_sdmmc::SdCard;
     pub use embedded_sdmmc::sdcard::*;
 }
+
+pub mod fs {
+    pub use simple_fatfs::*;
+}

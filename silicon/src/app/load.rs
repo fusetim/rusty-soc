@@ -7,24 +7,10 @@ use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle, StrokeAlig
 use embedded_graphics::text::renderer::CharacterStyle;
 use embedded_graphics::text::{Text, TextStyle, TextStyleBuilder};
 use embedded_hal::digital::OutputPin;
-use embedded_sdmmc::{LfnBuffer, TimeSource, Timestamp, VolumeIdx, VolumeManager};
+use silicon_fat::fs::{FSOptions, FileSystem};
+use silicon_fat::mbr::{MbrTable, VolumeIdx, VolumeManager};
 use silicon_hal::delay::INTR_DELAY;
 use embedded_hal::delay::DelayNs;
-
-struct ZeroTimeSource;
-impl TimeSource for ZeroTimeSource {
-    #[inline(always)]
-    fn get_timestamp(&self) -> Timestamp {
-        Timestamp {
-            year_since_1970: 10,
-            zero_indexed_month: 0,
-            zero_indexed_day: 0,
-            hours: 0,
-            minutes: 0,
-            seconds: 0,
-        }
-    }
-}
 
 /// Run the loading state logic.
 ///
@@ -54,64 +40,28 @@ pub fn run_loading(state: AppState) -> Option<AppState> {
             let mut carstyle = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
             carstyle.background_color = Some(Rgb565::BLACK);
 
-            display.clear(Rgb565::BLACK).ok()?;
+            display.clear(Rgb565::BLACK).unwrap();
 
             Text::new(cap_str, Point::new(0, 20), carstyle)
                 .draw(&mut display);
 
+            
+            leds.set_all_low();
+
             // Open first volume
-            let time_source = ZeroTimeSource;
-            let mut mgr = VolumeManager::new(sdcard, time_source);
-            let indexZero= VolumeIdx(0);
-            if let Ok(vol) =  mgr.open_volume(indexZero) {
-                // Successfully opened volume
-                leds.set_all_low();
-                leds.led4.set_high(); // Indicate success
-                INTR_DELAY.delay_ms(1000);
-
-                // Open root directory, list files, etc.
-                if let Ok(root_dir) = vol.open_root_dir() {
-                    // Successfully opened root directory
-                    leds.set_all_low();
-                    leds.led5.set_high(); // Indicate success
-                    INTR_DELAY.delay_ms(1000);
-
-                    // List files, load data, etc.
-                    let mut entries = [['.' as u8; 10]; 6];
-                    let mut count = 0;
-                    let mut buf = [0u8; 32];
-                    let mut lfn_buffer = LfnBuffer::new(&mut buf);
-                    root_dir.iterate_dir_lfn(&mut lfn_buffer, |entry, name| {
-                        if count < entries.len() {
-                            if let Some(name) = name {
-                                entries[count].copy_from_slice(name.as_bytes());
-                                count += 1;
-                            }
-                        }
-                    });
-
-                    // Successfully opened root directory
-                    leds.set_all_low();
-                    leds.led6.set_high(); // Indicate success
-                    INTR_DELAY.delay_ms(1000);
-
-                    if count > 0 {
-                        for i in 0..count {
-                            let name = core::str::from_utf8(&entries[i]).unwrap_or("???????");
-                            let y = 40 + (i as i32) * 20;
-                            if y > 120 {
-                                break;
-                            }
-                            Text::new(name, Point::new(0, y), carstyle)
-                                .draw(&mut display);
-                        }
-                    }
-
-                    leds.led2.set_high(); // Indicate success
-                    INTR_DELAY.delay_ms(1000);
-                }
+            let mut mng = VolumeManager::new(sdcard);
+            let mut volume = mng.open_volume(VolumeIdx(0)).unwrap();
+            leds.led2.set_high(); // MBR read OK, Partition 0 exists
+            let mut fs = FileSystem::new(&mut volume, FSOptions::new()).unwrap();
+            leds.led3.set_high(); // FS mount OK
+            let entries = fs.read_dir("/").unwrap();
+            leds.led4.set_high(); // Root dir read OK
+            let mut count = 0;
+            for entry in entries {
+                if count % 2 == 0 { leds.led5.set_low() } else { leds.led5.set_high() };
+                count += 1;
+                INTR_DELAY.delay_ms(200);
             }
-
 
             loop {}
         } else {

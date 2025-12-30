@@ -87,7 +87,7 @@ mod sdcard {
     /// SPI device type for the SDCard.
     pub type SdCardSpiDeviceType = ExclusiveDevice<SdCardSpi, SdCardCsPin, SdCardDelay>;
     /// SDCard peripheral / Block Device type.
-    pub type SdCard = embedded_sdmmc::SdCard<SdCardSpiDeviceType, SdCardDelay>;
+    pub type SdCard = silicon_fat::sd::SdCard<SdCardSpiDeviceType, SdCardDelay>;
 }
 
 mod leds {
