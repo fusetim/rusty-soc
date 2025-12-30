@@ -90,8 +90,10 @@ unit audio_streamer_peripheral(
             ctrl_data_wid = new_wid;
         }
 
-        // DAC clock divider for 8kHz sampling rate (assuming system clock is 25MHz)
-        dac_counter = (dac_counter == 3124) ? 0 : (dac_counter + 1);
+        // DAC clock divider 3125 for 8kHz sampling rate (assuming system clock is 25MHz)
+        // 25,000,000 / 8,000 = 3125
+        // 25,000,000 / 48,000 = 520.8 (~521 meaning it will be slightly late)
+        dac_counter = (dac_counter == 520) ? 0 : (dac_counter + 1);
 
         // SIMULATION ONLY: debug
         $$if SIMULATION then
