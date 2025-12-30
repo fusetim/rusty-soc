@@ -9,3 +9,6 @@ BUILD/
 *.ghw
 *.out
 *.raw
+bloat.log
+.gitignore
+hardware/src/socbkp.si

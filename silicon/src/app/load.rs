@@ -5,8 +5,27 @@ use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle, StrokeAlignment};
 use embedded_graphics::text::renderer::CharacterStyle;
-use embedded_graphics::text::{Text, TextStyle};
+use embedded_graphics::text::{Text, TextStyle, TextStyleBuilder};
 use embedded_hal::digital::OutputPin;
+use embedded_sdmmc::{Mode, TimeSource, Timestamp, VolumeIdx, VolumeManager};
+use silicon_hal::delay::INTR_DELAY;
+use embedded_hal::delay::DelayNs;
+use silicon_hal::pac::audio_streamer;
+
+struct ZeroTimeSource;
+impl TimeSource for ZeroTimeSource {
+    #[inline(always)]
+    fn get_timestamp(&self) -> Timestamp {
+        Timestamp {
+            year_since_1970: 10,
+            zero_indexed_month: 0,
+            zero_indexed_day: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        }
+    }
+}
 
 /// Run the loading state logic.
 ///
@@ -28,107 +47,106 @@ pub fn run_loading(state: AppState) -> Option<AppState> {
         let mut display = loading_state.display;
         let mut leds = loading_state.leds;
         let mut sdcard = loading_state.sdcard;
+        let mut audio_streamer = loading_state.audio_streamer;
 
-        // Loading bar
-        let outer_rect_origin = Point::new(34, 98);
-        let outer_rect_size = Size::new(60, 12);
-        let outer_rect = Rectangle::new(outer_rect_origin, outer_rect_size);
-        let outer_rect_style = PrimitiveStyleBuilder::new()
-            .stroke_color(Rgb565::WHITE)
-            .stroke_width(1)
-            .stroke_alignment(StrokeAlignment::Outside)
-            .build();
+        leds.set_all_low();
 
-        let inner_rect_origin = Point::new(36, 100);
-        let inner_rect_max_size = Size::new(56, 8);
-        let inner_rect_style = PrimitiveStyleBuilder::new()
-            .fill_color(Rgb565::CSS_PURPLE)
-            .build();
+        let mut mng = VolumeManager::new(sdcard, ZeroTimeSource);
+        leds.led1.set_high();
+        let volume = mng.open_raw_volume(VolumeIdx(0)).unwrap();
+        leds.led2.set_high();
+        let root = mng.open_root_dir(volume).unwrap();
+        leds.led3.set_high();
 
-        let mut character_style = MonoTextStyle::new(&FONT_10X20, Rgb565::CSS_PURPLE);
-        character_style.set_background_color(Some(Rgb565::BLACK));
-
-        // Debug info
-        let mut sd_cap = None;
-
-
-        // The current progress percentage
-        let mut progress = 0;
-        'running: loop {
-            // Update LED status
-            leds.set_all_states([
-                progress >= 12,
-                progress >= 25,
-                progress >= 37,
-                progress >= 50,
-                progress >= 62,
-                progress >= 75,
-                progress >= 87,
-                progress >= 100,
-            ]);
-
-            // Clear display and draw loading elements, when progress is 0
-            if progress == 0 {
-                display.clear(Rgb565::BLACK);
-
-                // Draw the outer rectangle
-                outer_rect.into_styled(outer_rect_style).draw(&mut display);
+        let mut names = [0u8; 12*8];
+        let mut name_index = [0usize; 8];
+        let mut count = 0;
+        mng.iterate_dir(root, |entry| {
+            // Just iterate through the directory entries
+            if count % 2 == 0 {
+                leds.led6.set_low();
+            } else {
+                leds.led6.set_high();
             }
 
-            // Draw centered text.
-            {
-                let mut textbuf = [0u8; 4];
-                let text = format_loading_percentage(progress, &mut textbuf);
-                Text::with_text_style(
-                    &text,
-                    display.bounding_box().center(),
-                    character_style,
-                    TextStyle::default(),
-                )
-                .draw(&mut display);
+            if count < 7 {
+                // Store the name of the first 8 entries
+                let base = entry.name.base_name();
+                let ext = entry.name.extension();
+                let mut name = [0u8; 32];
+                let mut len = base.len();
+                name[..len].copy_from_slice(base);
+                if !ext.is_empty() {
+                    name[len] = b'.';
+                    len += 1;
+                    name[len..len + ext.len()].copy_from_slice(ext);
+                    len += ext.len();
+                }
+                let start = name_index[count];
+                names[start..start + len].copy_from_slice(&name[0..len]);
+                name_index[count + 1] = start + len;
+            }
+            count += 1;
+        }).unwrap();
+        leds.led4.set_high();
+
+        // Print the names to the display
+        let character_style = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
+
+        // Play the music file one after another
+        let mut playing = 0;
+        let mut audio_samples = [0u8; 512];
+        while playing < count {
+            leds.set_all_low();
+            // Display the list of songs and the one currently playing
+            display.clear(Rgb565::BLACK);
+        
+            // Currently playing song get a black purple rectangle behind it
+            let rect = Rectangle::new(
+                Point::new(0, (playing as i32) * 20),
+                Size::new(128, 20),
+            );
+            let style = PrimitiveStyleBuilder::new()
+                .fill_color(Rgb565::CSS_DARK_MAGENTA)
+                .build();
+            rect.into_styled(style).draw(&mut display);
+
+            // Draw all the names
+            for i in 0..count {
+                let start = name_index[i];
+                let end = name_index[i + 1];
+                let name_str = core::str::from_utf8(&names[start..end]).unwrap_or("?!");
+                Text::new(name_str, Point::new(0, 16+(i as i32) * 20), character_style)
+                    .draw(&mut display)
+                    .unwrap();
             }
 
-            // Debug info
-            if let Some(cap) = sd_cap {
-                // Display SDCard capacity
-                let mut cap_buf = [0u8; 10]; // Enough for "XXX XXX MB"
-                let cap_str = format_sd_capacity_bytes(cap, &mut cap_buf);
-                Text::with_text_style(
-                    &cap_str,
-                    Point::new(20, 20),
-                    character_style,
-                    TextStyle::default(),
-                ).draw(&mut display);
-            }
-
-            // Draw the loading bar
-            {
-                let filled_width = (inner_rect_max_size.width * progress as u32) / 100;
-                let inner_rect = Rectangle::new(
-                    inner_rect_origin,
-                    Size::new(filled_width, inner_rect_max_size.height),
-                );
-                inner_rect.into_styled(inner_rect_style).draw(&mut display);
-            }
-
-            // Do progress
-            if progress == 10 {
-                // Initialize the SDCard by getting its size
-                if let Ok(cap) = sdcard.num_bytes() {
-                    sd_cap = Some(cap);
-                } else {
-                    // SDCard error
-                    leds.set_all_low();
-                    leds.led3.set_high(); // SDCard error
-                    break 'running;
+            // Play the song using the Audio Streamer
+            let start = name_index[playing];
+            let end = name_index[playing + 1];
+            if let Ok(name) = core::str::from_utf8(&names[start..end]) {
+                leds.led4.set_high();
+                if let Ok(file) = mng.open_file_in_dir(root, name, Mode::ReadOnly) {
+                    leds.led5.set_high();
+                    loop {
+                        let read = mng.read(file, &mut audio_samples).unwrap();
+                        if read == 0 {
+                            break;
+                        }
+                        leds.led6.set_high();
+                        // Write samples to audio streamer
+                        let mut written = 0;
+                        while written < read {
+                            written += audio_streamer.write_samples(&audio_samples[written..read]);
+                        }
+                        leds.led6.set_low();
+                    }
                 }
             }
-            
-            progress += 1;
-            if progress > 100 {
-                break 'running;
-            }
+            playing += 1;
         }
+
+        loop {}
     }
     None
 }
