@@ -3,17 +3,20 @@
 //! This module contains the main application logic for a simple music player, and its state management.
 
 use silicon_hal::{Peripheral, audio, display};
-use crate::peripheral::{LedBank, BtnBank, OledDisplay, SdCard, AudioStreamer};
+use crate::{fs::{VolumeManager, RawVolume, RawDirectory}, peripheral::{AudioStreamer, BtnBank, LedBank, OledDisplay, SdCard}};
 
 mod boot;
 mod load;
+mod menu;
+mod play;
 
 /// Represents the different states of the music player application.
 pub enum AppState {
     Booting(BootingState),
     Loading(LoadingState),
-    Menu,
-    Playing,
+    AlbumMenu(MenuState),
+    TitleMenu(MenuState),
+    Playing(PlayingState),
 }
 
 pub struct BootingState {
@@ -26,6 +29,29 @@ pub struct LoadingState {
     display: OledDisplay<display::Initialized>,
     sdcard: SdCard,
     audio_streamer: AudioStreamer<audio::Initialized>,
+}
+
+pub struct MenuState {
+    leds: LedBank,
+    btns: BtnBank,
+    display: OledDisplay<display::Initialized>,
+    audio_streamer: AudioStreamer<audio::Initialized>,
+    sd_state: SdDirState,
+}
+
+pub struct PlayingState {
+    leds: LedBank,
+    btns: BtnBank,
+    display: OledDisplay<display::Initialized>,
+    audio_streamer: AudioStreamer<audio::Initialized>,
+    sd_state: SdDirState,
+}
+
+/// Represents the state of the SD card directory.
+pub struct SdDirState {
+    pub mng: VolumeManager,
+    pub volume: RawVolume,
+    pub pwd: RawDirectory,
 }
 
 impl AppState {
@@ -41,11 +67,17 @@ impl AppState {
             AppState::Loading(_) => {
                 return load::run_loading(self);
             }
-            AppState::Menu => {
+            AppState::AlbumMenu(_) => {
                 // Menu state logic would go here
+                return menu::run_menu(self);
             }
-            AppState::Playing => {
+            AppState::TitleMenu(_) => {
+                // Menu state logic would go here
+                return menu::run_menu(self);
+            }
+            AppState::Playing(_) => {
                 // Playing state logic would go here
+                return play::run_playing(self);
             }
         }
         None

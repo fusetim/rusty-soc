@@ -7,6 +7,8 @@ use silicon_hal::{delay::INTR_DELAY, gpio::IntoPin as _};
 
 mod app;
 mod peripheral;
+mod fs;
+mod display;
 
 #[panic_handler]
 fn __panic(_info: &core::panic::PanicInfo) -> ! {

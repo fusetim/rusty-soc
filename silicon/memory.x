@@ -1,7 +1,7 @@
 MEMORY
 {
-   ram (rwx) : ORIGIN = 0x00000000, LENGTH = 80K /* 81920 bytes */
-   stack (rwx) : ORIGIN = 0x00013000, LENGTH = 4K
+   ram (rwx) : ORIGIN = 0x00000000, LENGTH = 96K /* 81920 bytes */
+   stack (rwx) : ORIGIN = 0x00018000, LENGTH = 4K
    peripheral (rw) : ORIGIN = 0x00020000, LENGTH = 64K
 }
 

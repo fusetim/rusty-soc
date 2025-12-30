@@ -208,12 +208,12 @@ mod btns {
     use silicon_hal::gpio::{Pin, btn_bank::{Btn1, Btn2, Btn3, Btn4, Btn5, Btn6}};
     
     pub struct BtnBank {
-        btn1: Pin<Btn1>,
-        btn2: Pin<Btn2>,
-        btn3: Pin<Btn3>,
-        btn4: Pin<Btn4>,
-        btn5: Pin<Btn5>,
-        btn6: Pin<Btn6>,
+        pub btn1: Pin<Btn1>,
+        pub btn2: Pin<Btn2>,
+        pub btn3: Pin<Btn3>,
+        pub btn4: Pin<Btn4>,
+        pub btn5: Pin<Btn5>,
+        pub btn6: Pin<Btn6>,
     }
 
     impl BtnBank {

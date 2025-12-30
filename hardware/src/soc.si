@@ -25,10 +25,10 @@ $include('./display.si')
 // Setup memory size
 // - addrW is the address bus width
 // - the topmost bit is used to indicate peripheral access
-// - actual RAM size is 80kB (20480 words = 81920 bytes)
+// - actual RAM size is 96kB (24576 words = 98304 bytes)
 // - See ../svd.xml for memory map
 $$addrW      = 16
-$$ramDepth   = 20480
+$$ramDepth   = 24576
 $$periph_bit = addrW-1
 // Configure BRAM (needed for write mask)
 $$config['bram_wmask_byte_wenable_width'] = 'data'
@@ -308,16 +308,6 @@ $$end
                 }
                 if (~gpio_en & ~dac_en /*& ~display_peripheral_en*/ & ~spi0_en & ~spi1_en & ~audio_streamer_mem_en) {
                     __display("[cycle %d] Peripheral access to unknown address: %b",cycle,prev_mem_addr);
-                }
-            }
-            if (~peripheral_en) { // RAM access
-                // Keep track of the stack accesses
-                if (prev_mem_addr > $addrW$h4c00 && prev_mem_addr <= $addrW$h4fff) {
-                    __display("[cycle %d] STACK ACCESS at SP=%h",cycle,prev_mem_addr);
-                }
-                // RAM ends at address 0x13fff (81920 bytes)
-                if (prev_mem_addr > $addrW$h4fff) {
-                    __display("[cycle %d] WARNING: RAM access out of bounds: %h",cycle,prev_mem_addr);
                 }
             }
         $$end
