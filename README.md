@@ -1,20 +1,32 @@
 # Rusty SoC
 
-Rusty SoC is a from-scratch implementation of a System on Chip (SoC) architecture 
-based on open-source components. It is designed to be flashable onto a FPGA board
-like the ULX3S, and it provides a "complete" SoC experience for Rust developers.
+Rusty SoC is a from-scratch System on Chip (SoC) design in Silice+Verilog.
+It is designed to be flashable onto a FPGA board like the ULX3S, and it provides a "complete" SoC 
+experience for Rust developers (it includes a Peripheral Access Crate (PAC), a Hardware Abstraction Layer (HAL),
+and an example applications).
 
 ## Features
 
 **Hardware Components**:
 - **RISC-V RV32I Core**: A simple and efficient 32-bit RISC-V core implemented in Silice ([The Ice-V](hardware/lib/silice/projects/ice-v/IceV.md)).
-- **Common Peripherals**: *UART*, SPI, "GPIO" for basic input/output operations.
-- **Memory-Mapped I/O**: Framebuffer (128x128 RGB565), Audio output (PWM-based), and more.
+  It currently supports the RV32I instruction set, and comes with no interrupts nor branch prediction.
+- **Common Peripherals**: 
+  - [x] 2x home-made SPI Masters (SPI0 connected to an SDCard, SPI1 connected to the OLED display)
+  - [x] 2x Audio "8-bit" DAC (PWM-based)
+  - [x] 1x Hardware Audio Streamer (48kHz - 8bit - PCM - Mono)
+  - [x] 8x Output Pins (Onboard LEDs)
+  - [x] 6x Input Pins (Onboard Buttons)
+  - [ ] 1x Timer (Timer0 - 1MHz clock)
+- **CMSYS-SVD description**: The SoC is fully described using the CMSYS-SVD format, allowing automatic generation of the Peripheral Access Crate (PAC) using `svd2rust` (see [`hardware/svd.xml`](hardware/svd.xml)).
 
 **Software Components**:
 - **Bare-Metal Rust Support**: Write applications in Rust without an operating system.
-- **embedded-hal Compatibility**: Leverage the `embedded-hal` traits for peripheral access.
-- [ ] **Bootloader**: A simple bootloader to initialize the system and load applications from SDCard.
+- **Peripheral Access Crate (PAC)**: Auto-generated PAC for the Rusty SoC peripherals using `svd2rust` (see the [`silicon-pac` crate](./silicon-pac/)).
+- **Hardware Abstraction Layer (HAL)**: A simple HAL to interact with the SoC peripherals (see the [`silicon-hal` crate](./silicon-hal/)).
+- **embedded-hal Compatibility**: Leverage the `embedded-hal` traits for peripheral access (such as GPIO and SPI).
+- **embedded-graphics Support**: Use the `embedded-graphics` crate to draw on the OLED display.
+- **Example Applications**: 
+  - An audio player that streams PCM audio from an SDCard to the Audio DAC with a graphical interface (see the [`silicon` crate](./silicon/)).
 
 ## Getting Started
 
@@ -25,7 +37,7 @@ Make sure you have the following tools installed:
 - Silice
 - Yosys
 - Nextpnr
-- Rust toolchain with `cargo` and `rustup` (see [rustup.rs](https://rustup.rs/))
+- Rust Nightly toolchain with `cargo` and `rustup` (see [rustup.rs](https://rustup.rs/))
 - RISC-V RV32i target for Rust: `rustup target add riscv32i-unknown-none-elf`
 - riscv64-unknown-elf-gcc toolchain for linking steps
 - make
