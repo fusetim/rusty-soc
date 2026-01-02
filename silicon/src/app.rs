@@ -2,8 +2,11 @@
 //!
 //! This module contains the main application logic for a simple music player, and its state management.
 
+use crate::{
+    fs::{RawDirectory, RawVolume, VolumeManager},
+    peripheral::{AudioStreamer, BtnBank, LedBank, OledDisplay, SdCard},
+};
 use silicon_hal::{Peripheral, audio, display};
-use crate::{fs::{VolumeManager, RawVolume, RawDirectory}, peripheral::{AudioStreamer, BtnBank, LedBank, OledDisplay, SdCard}};
 
 mod boot;
 mod load;
@@ -56,7 +59,7 @@ pub struct SdDirState {
 
 impl AppState {
     /// Run the application logic based on the current state.
-    /// 
+    ///
     /// Returns the new application state after running the logic.
     /// None if you want to stop the application.
     pub fn run(self) -> Option<Self> {
@@ -80,7 +83,6 @@ impl AppState {
                 return play::run_playing(self);
             }
         }
-        None
     }
 
     /// Create a new AppState in the Booting state.

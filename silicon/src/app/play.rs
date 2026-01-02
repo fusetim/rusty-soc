@@ -1,10 +1,10 @@
-use crate::{VoidUnwrap, app::{AppState, SdDirState}, display::BinWrapDrawTarget, fs::VolumeManager, peripheral::{LedBank, OledDisplay}};
-use embedded_graphics::{image::{Image, ImageDrawable, ImageDrawableExt as _, ImageRaw}, pixelcolor::{BinaryColor, Rgb565}, prelude::{Drawable, DrawTarget, Point, RgbColor, WebColors}};
-use embedded_hal::digital::{OutputPin, InputPin};
-use embedded_sdmmc::{Mode, VolumeIdx};
-use embedded_sdmmc::VolumeManager as _;
-use silicon_hal::{delay::{DelayNs, INTR_DELAY}, display, pac::gpio::btn};
-use crate::fs::ZeroTimeSource;
+use crate::{
+    VoidUnwrap,
+    app::{AppState, SdDirState},
+    delay_ms,
+};
+use embedded_hal::digital::{InputPin, OutputPin};
+use embedded_sdmmc::Mode;
 
 /// Run the Playing logic.
 ///
@@ -20,22 +20,17 @@ use crate::fs::ZeroTimeSource;
 /// * `Option<AppState>` - The new application state after loading, or None if an error occurred.
 pub fn run_playing(state: AppState) -> Option<AppState> {
     if let AppState::Playing(playing_state) = state {
-        let mut display = playing_state.display;
+        let display = playing_state.display;
         let mut leds = playing_state.leds;
         let mut btns = playing_state.btns;
         let mut sd_state = playing_state.sd_state;
         let mut audio_streamer = playing_state.audio_streamer;
-        let mut delay = INTR_DELAY;
 
         leds.set_all_low();
 
         // Open the music.raw file inside the current directory
-        let mut mng = &mut sd_state.mng;
-        let mut audio_file = match mng.open_file_in_dir(
-            sd_state.pwd,
-            "music.raw",
-            Mode::ReadOnly,
-        ) {
+        let mng = &mut sd_state.mng;
+        let audio_file = match mng.open_file_in_dir(sd_state.pwd, "music.raw", Mode::ReadOnly) {
             Ok(f) => f,
             Err(_) => return None, // TODO: Handle error appropriately
         };
@@ -53,7 +48,7 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
                 if pause_btn {
                     paused = !paused;
                     // Simple debounce - wait 300ms
-                    delay.delay_ms(300);
+                    delay_ms(300);
                 }
                 // Check if the back button is pressed
                 if back_btn {

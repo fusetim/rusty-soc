@@ -1,11 +1,10 @@
 use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::{DrawTarget, RgbColor};
-use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::{OutputPin, PinState};
+use silicon_hal::delay::INTR_DELAY;
 use silicon_hal::{
     audio,
     dac::AudioDac,
-    delay::INTR_DELAY,
     display::Initialized,
     gpio::{Gpio, IntoPin as _, Pin, never_bank::NeverPin},
     spi::{Spi0, Spi1},
@@ -16,7 +15,7 @@ use crate::peripheral::{
     AudioStreamer, BtnBank, LedBank, OledDisplay, OledSpi, OledSpiDevice, SdCard, SdCardSpi,
     SdCardSpiDeviceType,
 };
-use crate::VoidUnwrap;
+use crate::{VoidUnwrap, delay_ms};
 
 use super::AppState;
 
@@ -61,9 +60,9 @@ pub fn run_booting(state: AppState) -> Option<AppState> {
         led_bank.led4.set_high(); // Audio ok
 
         // Wait 1s before transitioning
-        INTR_DELAY.delay_ms(1000);
+        delay_ms(1000);
         led_bank.set_all_high();
-        INTR_DELAY.delay_ms(500);
+        delay_ms(500);
         led_bank.set_all_low();
 
         // Transition to Loading state
@@ -94,7 +93,7 @@ fn setup_display(spi: Spi1, gpio: &mut Gpio) -> OledDisplay<Initialized> {
     let oled_spi_device = OledSpiDevice::new(oled_spi, oled_spi_cs, INTR_DELAY).void_unwrap();
 
     // Create and initialize the OLED display peripheral
-    let mut oled_display: OledDisplay<_> =
+    let oled_display: OledDisplay<_> =
         OledDisplay::new(oled_spi_device, oled_cs, oled_dc, oled_rst, INTR_DELAY);
 
     let mut display = oled_display.initialize().void_unwrap();

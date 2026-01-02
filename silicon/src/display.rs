@@ -1,7 +1,7 @@
 use embedded_graphics::{
     Pixel,
     pixelcolor::BinaryColor,
-    prelude::{Dimensions, DrawTarget, PixelColor },
+    prelude::{Dimensions, DrawTarget, PixelColor},
     primitives::Rectangle,
 };
 
@@ -46,6 +46,7 @@ impl<'a, T: DrawTarget> BinWrapDrawTarget<'a, T> {
     /// # Returns
     ///
     /// The underlying DrawTarget instance.
+    #[allow(dead_code)]
     #[inline]
     pub fn dispose(self) -> &'a mut T {
         self.target

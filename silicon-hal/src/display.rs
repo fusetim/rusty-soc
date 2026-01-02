@@ -18,10 +18,9 @@ use crate::{
         cmd::{
             ClockDivCommand, CommandLockCommand, ContrastAbcCommand, ContrastMasterCommand,
             DisplayGpioConfig, DisplayOffCommand, DisplayOffsetCommand, DisplayOnCommand,
-            FunctionSelectCommand, FunctionSelectParallelOption, InvertDisplayCommand,
-            MuxRatioCommand, NormalDisplayCommand, Precharge2Command, PrechargeCommand,
-            SetColumnCommand, SetGpioCommand, SetRemapCommand, SetRowCommand, SetVslCommand,
-            VcomhCommand, WriteRamCommand,
+            FunctionSelectCommand, FunctionSelectParallelOption, MuxRatioCommand,
+            Precharge2Command, PrechargeCommand, SetColumnCommand, SetGpioCommand, SetRemapCommand,
+            SetRowCommand, SetVslCommand, VcomhCommand, WriteRamCommand,
         },
     },
     typesafe::Sealed,
@@ -71,7 +70,7 @@ where
     dc: DC,
     rst: RST,
     delay: DELAYER,
-    state: STATE,
+    _state: STATE,
 }
 
 impl<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR>
@@ -92,7 +91,7 @@ where
     #[inline(always)]
     pub fn new(spi: SPI, cs: CS, dc: DC, rst: RST, delay: DELAYER) -> Self {
         Self {
-            state: Uninitialized,
+            _state: Uninitialized,
             spi,
             cs,
             dc,
@@ -192,7 +191,7 @@ where
             dc: self.dc,
             rst: self.rst,
             delay: self.delay,
-            state: Initialized,
+            _state: Initialized,
         })
     }
 }
@@ -252,7 +251,7 @@ where
             dc: self.dc,
             rst: self.rst,
             delay: self.delay,
-            state: Uninitialized,
+            _state: Uninitialized,
         }
     }
 
@@ -279,9 +278,7 @@ where
     }
 
     /// Checkerboard display calibration pattern
-    pub fn display_calibration_pattern(
-        &mut self,
-    ) -> Result<(), DisplayError<PINERR, SPIERR>> {
+    pub fn display_calibration_pattern(&mut self) -> Result<(), DisplayError<PINERR, SPIERR>> {
         self.set_address_window(0, 0, 127, 127)?;
         self.send_command(&WriteRamCommand {})?;
         self.dc.set_high().map_err(|e| DisplayError::PinError(e))?;
@@ -324,8 +321,11 @@ where
 
 #[cfg(feature = "graphics")]
 mod graphics {
-    use embedded_graphics_core::{pixelcolor::{Rgb565, raw::ToBytes}, prelude::{DrawTarget, OriginDimensions, Size}};
     use super::*;
+    use embedded_graphics_core::{
+        pixelcolor::{Rgb565, raw::ToBytes},
+        prelude::{DrawTarget, OriginDimensions, Size},
+    };
 
     impl<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR>
         DisplayPeripheral<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR, Initialized>
@@ -413,7 +413,7 @@ mod graphics {
         }
 
         /// Draw a continuous rectangle area defined by (x0, y0) to (x1, y1) with the given RGB565 pixels
-        /// 
+        ///
         /// The pixel data must be provided in row-major order (top-left to bottom-right).
         /// The length of the `pixels` iterator might be less than or equal to the rectangle area.
         /// If less, only that many pixels will be drawn.
@@ -450,7 +450,8 @@ mod graphics {
             self.cs.set_low().map_err(|e| DisplayError::PinError(e))?;
 
             // Transfer a pixel at a time
-            let pixels: core::iter::Take<<I as IntoIterator>::IntoIter> = pixels.into_iter().take(total_pixels as usize);
+            let pixels: core::iter::Take<<I as IntoIterator>::IntoIter> =
+                pixels.into_iter().take(total_pixels as usize);
             for pix in pixels {
                 let color: [u8; 2] = pix.to_be_bytes();
                 self.spi
@@ -463,8 +464,7 @@ mod graphics {
         }
     }
 
-    impl<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR>
-        DrawTarget 
+    impl<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR> DrawTarget
         for DisplayPeripheral<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR, Initialized>
     where
         SPI: SpiDevice<u8, Error = SPIERR>,
@@ -475,13 +475,14 @@ mod graphics {
     {
         type Color = Rgb565;
         type Error = DisplayError<PINERR, SPIERR>;
-    
+
         // Draw pixels from an iterator
-        // 
+        //
         // The iterator should yield pixels in any order, therefore we set each pixel individually.
         fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
         where
-            I: IntoIterator<Item = embedded_graphics_core::Pixel<Self::Color>> {
+            I: IntoIterator<Item = embedded_graphics_core::Pixel<Self::Color>>,
+        {
             for pixel in pixels {
                 let embedded_graphics_core::Pixel(coord, color) = pixel;
                 let x = coord.x as u8;
@@ -494,9 +495,14 @@ mod graphics {
         // Fill a contiguous rectangle area with colors from an iterator
         // The colors must be provided in row-major order (top-left to bottom-right).
         // A lot more efficient than draw_iter for filled rectangle area.
-        fn fill_contiguous<I>(&mut self, area: &embedded_graphics_core::primitives::Rectangle, colors: I) -> Result<(), Self::Error>
-            where
-                I: IntoIterator<Item = Self::Color>, {
+        fn fill_contiguous<I>(
+            &mut self,
+            area: &embedded_graphics_core::primitives::Rectangle,
+            colors: I,
+        ) -> Result<(), Self::Error>
+        where
+            I: IntoIterator<Item = Self::Color>,
+        {
             if let Some(br) = area.bottom_right() {
                 // Non-zero area
                 let x0 = area.top_left.x as u8;
@@ -511,7 +517,11 @@ mod graphics {
         }
 
         // Fill a rectangle area with a single color
-        fn fill_solid(&mut self, area: &embedded_graphics_core::primitives::Rectangle, color: Self::Color) -> Result<(), Self::Error> {
+        fn fill_solid(
+            &mut self,
+            area: &embedded_graphics_core::primitives::Rectangle,
+            color: Self::Color,
+        ) -> Result<(), Self::Error> {
             // Check for rectangle size null
             if let Some(br) = area.bottom_right() {
                 // Non-zero area
@@ -527,8 +537,7 @@ mod graphics {
         }
     }
 
-    impl<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR>
-        OriginDimensions
+    impl<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR> OriginDimensions
         for DisplayPeripheral<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR, Initialized>
     where
         SPI: SpiDevice<u8, Error = SPIERR>,

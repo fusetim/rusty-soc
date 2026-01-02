@@ -1,5 +1,5 @@
-use embedded_sdmmc::{TimeSource, Timestamp};
 use crate::peripheral::SdCard;
+use embedded_sdmmc::{TimeSource, Timestamp};
 
 /// A TimeSource implementation that always returns a zero timestamp.
 pub struct ZeroTimeSource;
@@ -17,4 +17,4 @@ impl TimeSource for ZeroTimeSource {
 }
 
 pub type VolumeManager = embedded_sdmmc::VolumeManager<SdCard, ZeroTimeSource>;
-pub use embedded_sdmmc::{RawDirectory, RawFile, RawVolume};
+pub use embedded_sdmmc::{RawDirectory, RawVolume};

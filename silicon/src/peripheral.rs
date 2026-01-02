@@ -1,19 +1,20 @@
+pub use audio_streamer::*;
+pub use btns::*;
+pub use leds::*;
 pub use oled::*;
 pub use sdcard::*;
-pub use leds::*;
-pub use btns::*;
-pub use audio_streamer::*;
 
+#[allow(dead_code)]
 mod audio_streamer {
     //! Type aliases for Audio Streamer peripherals
-    //! 
+    //!
     //! These types are used to simplify the interface for working with the Audio Streamer.
 
     use silicon_hal::delay::IntrDelay;
 
     /// Delayer used for the Audio Streamer.
     pub type AudioStreamerDelay = IntrDelay;
-    
+
     /// Audio mode for the Audio Streamer.
     pub type AudioMode = silicon_hal::audio::Mono;
 
@@ -21,9 +22,10 @@ mod audio_streamer {
     pub type AudioStreamer<STATE> = silicon_hal::audio::AudioStreamer<AudioMode, STATE>;
 }
 
+#[allow(dead_code)]
 mod oled {
     //! Type aliases for OLED display peripherals
-    //! 
+    //!
     //! These types are used to simplify the interface for working with the OLED display.
     use core::convert::Infallible;
 
@@ -66,16 +68,16 @@ mod oled {
     >;
 }
 
-
+#[allow(dead_code)]
 mod sdcard {
     //! Type aliases for SDCard peripherals
-    //! 
+    //!
     //! These types are used to simplify the interface for working with the SDCard.
     use embedded_hal_bus::spi::ExclusiveDevice;
     use silicon_hal::{
-        delay::IntrDelay, gpio::{
-            Pin, spi_sdcard_bank::SpiSdCs,
-        }, spi::{Spi, Spi0,}
+        delay::IntrDelay,
+        gpio::{Pin, spi_sdcard_bank::SpiSdCs},
+        spi::{Spi, Spi0},
     };
 
     /// Delayer used for the SDCard.
@@ -90,18 +92,22 @@ mod sdcard {
     pub type SdCard = embedded_sdmmc::SdCard<SdCardSpiDeviceType, SdCardDelay>;
 }
 
+#[allow(dead_code)]
 mod leds {
     //! Type aliases for LED peripherals
-    //! 
+    //!
     //! These types are used to simplify the interface for working with the LEDs.
 
-    use core::{convert::Infallible};
+    use core::convert::Infallible;
 
     use embedded_hal::digital::OutputPin;
-    use silicon_hal::gpio::{Pin, led_bank::{Led0, Led1, Led2, Led3, Led4, Led5, Led6, Led7}};
+    use silicon_hal::gpio::{
+        Pin,
+        led_bank::{Led0, Led1, Led2, Led3, Led4, Led5, Led6, Led7},
+    };
 
     use crate::VoidUnwrap;
-    
+
     pub struct LedBank {
         pub led0: Pin<Led0>,
         pub led1: Pin<Led1>,
@@ -199,16 +205,20 @@ mod leds {
     }
 }
 
+#[allow(dead_code)]
 mod btns {
     //! Type aliases for Button peripherals
-    //! 
+    //!
     //! These types are used to simplify the interface for working with the Buttons.
 
-    use core::{convert::Infallible};
+    use core::convert::Infallible;
 
     use embedded_hal::digital::InputPin;
-    use silicon_hal::gpio::{Pin, btn_bank::{Btn1, Btn2, Btn3, Btn4, Btn5, Btn6}};
-    
+    use silicon_hal::gpio::{
+        Pin,
+        btn_bank::{Btn1, Btn2, Btn3, Btn4, Btn5, Btn6},
+    };
+
     pub struct BtnBank {
         pub btn1: Pin<Btn1>,
         pub btn2: Pin<Btn2>,
@@ -257,16 +267,10 @@ mod btns {
             )
         }
 
-
         /// Get references to all Button pins as an array.
         pub fn as_pins(&self) -> [&dyn InputPin<Error = Infallible>; 6] {
             [
-                &self.btn1,
-                &self.btn2,
-                &self.btn3,
-                &self.btn4,
-                &self.btn5,
-                &self.btn6,
+                &self.btn1, &self.btn2, &self.btn3, &self.btn4, &self.btn5, &self.btn6,
             ]
         }
     }

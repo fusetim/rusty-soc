@@ -1,10 +1,21 @@
-use crate::{app::{AppState, SdDirState}, display::BinWrapDrawTarget, fs::VolumeManager, peripheral::{LedBank, OledDisplay}, VoidUnwrap};
-use embedded_graphics::{image::{Image, ImageDrawable, ImageDrawableExt as _, ImageRaw}, pixelcolor::{BinaryColor, Rgb565}, prelude::{Drawable, DrawTarget, Point, RgbColor, WebColors}};
+use crate::delay_ms;
+use crate::display::BinWrapDrawTarget;
+use crate::fs::ZeroTimeSource;
+use crate::{
+    VoidUnwrap,
+    app::{AppState, SdDirState},
+    fs::VolumeManager,
+    peripheral::{LedBank, OledDisplay},
+};
+use embedded_graphics::{
+    image::{Image, ImageDrawableExt as _, ImageRaw},
+    pixelcolor::{BinaryColor, Rgb565},
+    prelude::{DrawTarget, Drawable, Point, RgbColor, WebColors},
+};
 use embedded_hal::digital::OutputPin;
 use embedded_sdmmc::{Mode, VolumeIdx};
-use embedded_sdmmc::VolumeManager as _;
-use silicon_hal::{delay::{DelayNs, INTR_DELAY}, display};
-use crate::fs::ZeroTimeSource;
+use silicon_hal::delay::{DelayNs, INTR_DELAY};
+use silicon_hal::display;
 
 /// Run the loading state logic.
 ///
@@ -24,7 +35,6 @@ pub fn run_loading(state: AppState) -> Option<AppState> {
         let mut leds = loading_state.leds;
         let sdcard = loading_state.sdcard;
         let audio_streamer = loading_state.audio_streamer;
-        let mut delay = INTR_DELAY;
 
         leds.set_all_low();
 
@@ -41,17 +51,17 @@ pub fn run_loading(state: AppState) -> Option<AppState> {
             pwd: root,
         };
 
-        delay.delay_ms(1000);
+        delay_ms(1000);
 
         // Display welcome animation
-        let mut glyph_data= [0; 512];
+        let mut glyph_data = [0; 512];
         read_asset_data(&mut sd_state, "hi.raw", 0, &mut glyph_data, &mut leds).unwrap();
         leds.led4.set_high();
 
-        welcome_animation(&mut display, &glyph_data, delay);
+        welcome_animation(&mut display, &glyph_data, INTR_DELAY);
         leds.led5.set_high();
 
-        delay.delay_ms(500);
+        delay_ms(500);
 
         leds.set_all_low();
         return Some(AppState::AlbumMenu(crate::app::MenuState {
@@ -66,14 +76,17 @@ pub fn run_loading(state: AppState) -> Option<AppState> {
 }
 
 /// Display a welcome animation on the OLED display.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `display` - The OLED display to draw the animation on.
 /// * `glyph_data` - The glyph data to use for the animation. (64x64 pixels on/off - 512 bytes)
-fn welcome_animation(display: &mut OledDisplay<display::Initialized>, glyph_data: &[u8; 512], mut delay: impl DelayNs) {
+fn welcome_animation(
+    display: &mut OledDisplay<display::Initialized>,
+    glyph_data: &[u8; 512],
+    mut delay: impl DelayNs,
+) {
     let raw_image = ImageRaw::<BinaryColor>::new(glyph_data, 64);
-
 
     // Clear the display
     display.clear(Rgb565::BLACK);
@@ -88,7 +101,8 @@ fn welcome_animation(display: &mut OledDisplay<display::Initialized>, glyph_data
                 embedded_graphics::prelude::Point::new(0, 0),
                 embedded_graphics::prelude::Size::new(64, 64 - k),
             );
-            let mut white_display = BinWrapDrawTarget::new(Rgb565::CSS_WHITE, Rgb565::BLACK, display);
+            let mut white_display =
+                BinWrapDrawTarget::new(Rgb565::CSS_WHITE, Rgb565::BLACK, display);
             let sub_image = raw_image.sub_image(&white_area);
             let white_img = Image::new(&sub_image, white_pos);
             white_img.draw(&mut white_display);
@@ -101,7 +115,8 @@ fn welcome_animation(display: &mut OledDisplay<display::Initialized>, glyph_data
                 embedded_graphics::prelude::Point::new(0, 64 - (k as i32)),
                 embedded_graphics::prelude::Size::new(64, 64),
             );
-            let mut purple_display = BinWrapDrawTarget::new(Rgb565::CSS_PURPLE, Rgb565::BLACK, display);
+            let mut purple_display =
+                BinWrapDrawTarget::new(Rgb565::CSS_PURPLE, Rgb565::BLACK, display);
             let sub_image = raw_image.sub_image(&purple_area);
             let purple_image = Image::new(&sub_image, purple_pos);
             purple_image.draw(&mut purple_display);
@@ -114,7 +129,7 @@ fn welcome_animation(display: &mut OledDisplay<display::Initialized>, glyph_data
 }
 
 /// Read asset data from the SD card.
-/// 
+///
 /// # Arguments
 /// * `root` - The current SD card directory state.
 /// * `path` - The path to the asset file.
@@ -122,7 +137,13 @@ fn welcome_animation(display: &mut OledDisplay<display::Initialized>, glyph_data
 /// * `buf` - The buffer to read the data into.
 /// # Returns
 /// * `Result<usize, ()>` - The number of bytes read on success, or an error on failure.
-pub fn read_asset_data(root: &mut SdDirState, path: &str, offset: u32, buf: &mut [u8], debug_leds: &mut LedBank) -> Result<usize, ()> {
+pub fn read_asset_data(
+    root: &mut SdDirState,
+    path: &str,
+    offset: u32,
+    buf: &mut [u8],
+    debug_leds: &mut LedBank,
+) -> Result<usize, ()> {
     debug_leds.set_all_high();
     let mnr: &mut VolumeManager = &mut root.mng;
     if let Ok(sys_dir) = mnr.open_dir(root.pwd.clone(), "__SYS__") {
@@ -144,6 +165,6 @@ pub fn read_asset_data(root: &mut SdDirState, path: &str, offset: u32, buf: &mut
                 }
             }
         }
-    } 
+    }
     Err(())
 }

@@ -8,10 +8,12 @@ use embedded_graphics::{
 use embedded_hal::digital::{InputPin, OutputPin};
 use embedded_sdmmc::ShortFileName;
 use heapless::{String, Vec};
-use silicon_hal::{delay::INTR_DELAY, display};
+use silicon_hal::display;
 
 use crate::{
-    VoidUnwrap, app::{AppState, MenuState, PlayingState, SdDirState}, peripheral::OledDisplay
+    VoidUnwrap,
+    app::{AppState, MenuState, PlayingState, SdDirState},
+    peripheral::OledDisplay,
 };
 
 /// Run the Album Menu logic.
@@ -27,26 +29,26 @@ use crate::{
 ///
 /// * `Option<AppState>` - The new application state after loading, or None if an error occurred.
 pub fn run_menu(state: AppState) -> Option<AppState> {
-    let (mut display, mut leds, mut btns, mut sd_state, mut audio_streamer, title_select) =
-        match state {
-            AppState::AlbumMenu(menu_state) => (
-                menu_state.display,
-                menu_state.leds,
-                menu_state.btns,
-                menu_state.sd_state,
-                menu_state.audio_streamer,
-                false,
-            ),
-            AppState::TitleMenu(menu_state) => (
-                menu_state.display,
-                menu_state.leds,
-                menu_state.btns,
-                menu_state.sd_state,
-                menu_state.audio_streamer,
-                true,
-            ),
-            _ => return None, // Invalid state transition
-        };
+    let (mut display, mut leds, mut btns, mut sd_state, audio_streamer, title_select) = match state
+    {
+        AppState::AlbumMenu(menu_state) => (
+            menu_state.display,
+            menu_state.leds,
+            menu_state.btns,
+            menu_state.sd_state,
+            menu_state.audio_streamer,
+            false,
+        ),
+        AppState::TitleMenu(menu_state) => (
+            menu_state.display,
+            menu_state.leds,
+            menu_state.btns,
+            menu_state.sd_state,
+            menu_state.audio_streamer,
+            true,
+        ),
+        _ => return None, // Invalid state transition
+    };
 
     // Reset LEDs & Display
     leds.set_all_low();

@@ -4,8 +4,6 @@
 //!
 //! The AudioStreamer struct manages a ring buffer for audio samples and provides methods to write samples to the DAC.
 
-use silicon_pac::audio_streamer::control::W;
-
 use crate::pac;
 use crate::{dac::AudioDac, typesafe::Sealed};
 /// Marker trait for AudioStreamer states (Uninitialized and Initialized).
