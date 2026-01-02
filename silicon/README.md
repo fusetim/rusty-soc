@@ -14,18 +14,18 @@ and the DE1-SoC (Altera Cyclone V based board). *See [requirements](https://gist
 ***!**: Mark a feature as planned*
 
 #### Assignment - Minimal set of features to be implemented
-- [x]**!** Menu with Album list (e.g. one per directory on the SDCard)
-- [ ]**!** Play/Pause control using buttons
-- [x]**!** On end of track, automatically gets back to the Album list
-- [ ]**!** Display track art when playing
-- [ ]**!** LED effect (baked in the hardware) -- *it might not be related to the music*
+- [x] **!** Menu with Album list (e.g. one per directory on the SDCard)
+- [x] **!** Play/Pause control using buttons
+- [x] **!** On end of track, automatically gets back to the Album list
+- [ ] **!** Display track art when playing
+- [ ] **!** LED effect (baked in the hardware) -- *it might not be related to the music*
 
 #### Assignment Bonus - Additional features to implement if time permits
-- [ ]**!** Seek control using buttons (e.g. skip forward/backward by 10s)
-- [ ]**!** On-launch sound effect and/or sound made on the hardware sound generator
-- [x]**!** Color screen
-- [ ]**!** Animation while playing (OLED display and/or LEDs)
-- [ ]**!** Volume control using buttons and LED indicator
+- [ ] **!** Seek control using buttons (e.g. skip forward/backward by 10s)
+- [ ] **!** On-launch sound effect and/or sound made on the hardware sound generator
+- [x] **!** Color screen
+- [ ] **!** Animation while playing (OLED display and/or LEDs)
+- [ ] **!** Volume control using buttons and LED indicator
 - [ ] White (Brown? Pink?) noise generator 
 - [ ] Any easter egg you can think of!
 

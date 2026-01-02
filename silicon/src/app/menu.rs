@@ -78,15 +78,18 @@ pub fn run_menu(state: AppState) -> Option<AppState> {
 
         // Handle button inputs
         'inputs: loop {
-            if btns.btn1.is_high().unwrap() {
+            // BTN3 = Up / Prev
+            if btns.btn3.is_high().unwrap() {
                 cursor = cursor.saturating_sub(1);
                 break 'inputs;
             }
-            if btns.btn2.is_high().unwrap() {
+            // BTN4 = Down / Next
+            if btns.btn4.is_high().unwrap() {
                 cursor = (cursor + 1).min(files.len() - 1);
                 break 'inputs;
             }
-            if btns.btn3.is_high().unwrap() {
+            // BTN6 = Select / OK
+            if btns.btn6.is_high().unwrap() {
                 // Select album
                 break 'select;
             }

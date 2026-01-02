@@ -129,6 +129,7 @@
                 <register>
                     <name>BTN</name>
                     <description>Get state of the on-board BTN inputs.</description>
+                    <!-- Button Mappings: B0=Enable, B1=VolDown, B2=VolUp, B3=Up, B4=Down/Ok, B5=Left, B6=Right -->
                     <addressOffset>0x04</addressOffset>
                     <size>8</size>
                     <access>read-only</access>
