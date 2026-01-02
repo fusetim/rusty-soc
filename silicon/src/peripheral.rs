@@ -99,6 +99,8 @@ mod leds {
 
     use embedded_hal::digital::OutputPin;
     use silicon_hal::gpio::{Pin, led_bank::{Led0, Led1, Led2, Led3, Led4, Led5, Led6, Led7}};
+
+    use crate::VoidUnwrap;
     
     pub struct LedBank {
         pub led0: Pin<Led0>,
@@ -174,13 +176,13 @@ mod leds {
 
         pub fn set_all_low(&mut self) {
             for led in self.as_pins().iter_mut() {
-                led.set_low().unwrap();
+                led.set_low().void_unwrap();
             }
         }
 
         pub fn set_all_high(&mut self) {
             for led in self.as_pins().iter_mut() {
-                led.set_high().unwrap();
+                led.set_high().void_unwrap();
             }
         }
 
@@ -188,9 +190,9 @@ mod leds {
             let pins = self.as_pins();
             for (pin, &state) in pins.into_iter().zip(states.iter()) {
                 if state {
-                    pin.set_high().unwrap();
+                    pin.set_high().void_unwrap();
                 } else {
-                    pin.set_low().unwrap();
+                    pin.set_low().void_unwrap();
                 }
             }
         }

@@ -11,8 +11,7 @@ use heapless::{String, Vec};
 use silicon_hal::{delay::INTR_DELAY, display};
 
 use crate::{
-    app::{AppState, MenuState, PlayingState, SdDirState},
-    peripheral::OledDisplay,
+    VoidUnwrap, app::{AppState, MenuState, PlayingState, SdDirState}, peripheral::OledDisplay
 };
 
 /// Run the Album Menu logic.
@@ -79,17 +78,17 @@ pub fn run_menu(state: AppState) -> Option<AppState> {
         // Handle button inputs
         'inputs: loop {
             // BTN3 = Up / Prev
-            if btns.btn3.is_high().unwrap() {
+            if btns.btn3.is_high().void_unwrap() {
                 cursor = cursor.saturating_sub(1);
                 break 'inputs;
             }
             // BTN4 = Down / Next
-            if btns.btn4.is_high().unwrap() {
+            if btns.btn4.is_high().void_unwrap() {
                 cursor = (cursor + 1).min(files.len() - 1);
                 break 'inputs;
             }
             // BTN6 = Select / OK
-            if btns.btn6.is_high().unwrap() {
+            if btns.btn6.is_high().void_unwrap() {
                 // Select album
                 break 'select;
             }
@@ -110,7 +109,7 @@ pub fn run_menu(state: AppState) -> Option<AppState> {
     leds.led5.set_high(); // Indicate directory opened
 
     // Close the current directory
-    sd_state.mng.close_dir(sd_state.pwd).unwrap(); // This is important to avoid running out of dir handles
+    sd_state.mng.close_dir(sd_state.pwd).void_unwrap(); // This is important to avoid running out of dir handles
     leds.led6.set_high(); // Indicate directory closed
 
     if !title_select {
@@ -207,11 +206,11 @@ fn get_file_names<const N: usize>(
 fn sfn_to_str(sfn: &ShortFileName) -> String<12> {
     let mut rst = String::new();
     let base = unsafe { core::str::from_utf8_unchecked(sfn.base_name()) };
-    rst.push_str(base).unwrap();
+    rst.push_str(base).void_unwrap();
     if !sfn.extension().is_empty() {
         let ext = unsafe { core::str::from_utf8_unchecked(sfn.extension()) };
-        rst.push('.').unwrap();
-        rst.push_str(ext).unwrap();
+        rst.push('.').void_unwrap();
+        rst.push_str(ext).void_unwrap();
     }
     rst
 }
@@ -247,6 +246,6 @@ fn render_menu<const N: usize>(
     for (i, name) in album_names.iter().enumerate() {
         let position = Point::new(0, 16 + (i as i32) * 20); // 20 pixels per line - 16 for the baseline
         let text = Text::new(name, position, text_style);
-        text.draw(display).unwrap();
+        text.draw(display).void_unwrap();
     }
 }

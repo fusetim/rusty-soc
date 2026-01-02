@@ -1,4 +1,4 @@
-use crate::{app::{AppState, SdDirState}, display::BinWrapDrawTarget, fs::VolumeManager, peripheral::{LedBank, OledDisplay}};
+use crate::{app::{AppState, SdDirState}, display::BinWrapDrawTarget, fs::VolumeManager, peripheral::{LedBank, OledDisplay}, VoidUnwrap};
 use embedded_graphics::{image::{Image, ImageDrawable, ImageDrawableExt as _, ImageRaw}, pixelcolor::{BinaryColor, Rgb565}, prelude::{Drawable, DrawTarget, Point, RgbColor, WebColors}};
 use embedded_hal::digital::OutputPin;
 use embedded_sdmmc::{Mode, VolumeIdx};
@@ -30,9 +30,9 @@ pub fn run_loading(state: AppState) -> Option<AppState> {
 
         let mng = VolumeManager::new(sdcard, ZeroTimeSource);
         leds.led1.set_high();
-        let volume = mng.open_raw_volume(VolumeIdx(0)).unwrap();
+        let volume = mng.open_raw_volume(VolumeIdx(0)).void_unwrap();
         leds.led2.set_high();
-        let root = mng.open_root_dir(volume).unwrap();
+        let root = mng.open_root_dir(volume).void_unwrap();
         leds.led3.set_high();
 
         let mut sd_state = SdDirState {

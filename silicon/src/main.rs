@@ -9,6 +9,9 @@ mod app;
 mod peripheral;
 mod fs;
 mod display;
+mod utils;
+
+pub use utils::VoidUnwrap;
 
 #[panic_handler]
 fn __panic(_info: &core::panic::PanicInfo) -> ! {
@@ -43,3 +46,4 @@ fn main() -> ! {
 
     loop {}
 }
+

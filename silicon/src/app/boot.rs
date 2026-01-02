@@ -16,6 +16,7 @@ use crate::peripheral::{
     AudioStreamer, BtnBank, LedBank, OledDisplay, OledSpi, OledSpiDevice, SdCard, SdCardSpi,
     SdCardSpiDeviceType,
 };
+use crate::VoidUnwrap;
 
 use super::AppState;
 
@@ -90,13 +91,13 @@ fn setup_display(spi: Spi1, gpio: &mut Gpio) -> OledDisplay<Initialized> {
     // Create the SPI interface for the OLED display
     let oled_spi_cs = Pin::new_output(NeverPin(PinState::Low));
     let oled_spi = OledSpi::new(spi, INTR_DELAY);
-    let oled_spi_device = OledSpiDevice::new(oled_spi, oled_spi_cs, INTR_DELAY).unwrap();
+    let oled_spi_device = OledSpiDevice::new(oled_spi, oled_spi_cs, INTR_DELAY).void_unwrap();
 
     // Create and initialize the OLED display peripheral
     let mut oled_display: OledDisplay<_> =
         OledDisplay::new(oled_spi_device, oled_cs, oled_dc, oled_rst, INTR_DELAY);
 
-    let mut display = oled_display.initialize().unwrap();
+    let mut display = oled_display.initialize().void_unwrap();
 
     // Clear the display
     display.clear(Rgb565::BLACK);
@@ -111,7 +112,7 @@ fn setup_sdcard(spi: Spi0, gpio: &mut Gpio) -> SdCard {
 
     // Setup the SPI interface for the SDCard
     let sd_spi = SdCardSpi::new(spi, INTR_DELAY);
-    let sd_spi_device = SdCardSpiDeviceType::new(sd_spi, sd_cs, INTR_DELAY).unwrap();
+    let sd_spi_device = SdCardSpiDeviceType::new(sd_spi, sd_cs, INTR_DELAY).void_unwrap();
 
     // Create and return the SDCard peripheral
     SdCard::new(sd_spi_device, INTR_DELAY)
