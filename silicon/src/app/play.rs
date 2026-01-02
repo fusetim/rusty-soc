@@ -44,6 +44,8 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
             {
                 let pause_btn = btns.btn4.is_high().unwrap_or(false);
                 let back_btn = btns.btn3.is_high().unwrap_or(false);
+                let forward_btn = btns.btn6.is_high().unwrap_or(false);
+                let backward_btn = btns.btn5.is_high().unwrap_or(false);
                 // Check if the pause button is pressed
                 if pause_btn {
                     paused = !paused;
@@ -54,6 +56,18 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
                 if back_btn {
                     // Stop playback and go back to title menu
                     break;
+                }
+                // Check if the forward button is pressed
+                if forward_btn {
+                    // TODO: Skip will fail if we are near EOF - handle that case (https://github.com/fusetim/rusty-soc/issues/1)
+                    let _ = mng.file_seek_from_current(audio_file, 938*512); // Skip forward ~10s (assuming 48kHz mono 8-bit)
+                    // Simple debounce - wait 300ms
+                    delay_ms(300);
+                } else if backward_btn { // Check if the backward button is pressed
+                    // TODO: Going backward will fail if we are near the start of the file - handle that case (https://github.com/fusetim/rusty-soc/issues/1)
+                    let _ = mng.file_seek_from_current(audio_file, -(938*512)); // Skip backward ~10s
+                    // Simple debounce - wait 300ms
+                    delay_ms(300);
                 }
             }
 

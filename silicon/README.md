@@ -21,7 +21,8 @@ and the DE1-SoC (Altera Cyclone V based board). *See [requirements](https://gist
 - [ ] **!** LED effect (baked in the hardware) -- *it might not be related to the music*
 
 #### Assignment Bonus - Additional features to implement if time permits
-- [ ] **!** Seek control using buttons (e.g. skip forward/backward by 10s)
+- [x] **!** Seek control using buttons (e.g. skip forward/backward by 10s)  
+      *Known issue (https://github.com/fusetim/rusty-soc/issues/1): Seeking may not work correctly near the start or end of the file*
 - [ ] **!** On-launch sound effect and/or sound made on the hardware sound generator
 - [x] **!** Color screen
 - [ ] **!** Animation while playing (OLED display and/or LEDs)
