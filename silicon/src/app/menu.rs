@@ -145,7 +145,7 @@ pub fn run_menu(state: AppState) -> Option<AppState> {
             }));
         }
 
-        display.clear(Rgb565::CSS_PURPLE);
+        display.clear(Rgb565::BLACK);
         Some(AppState::Playing(PlayingState {
             leds,
             btns,
