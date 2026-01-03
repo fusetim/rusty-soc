@@ -462,6 +462,47 @@ mod graphics {
             self.cs.set_high().map_err(|e| DisplayError::PinError(e))?;
             Ok(())
         }
+
+        /// Draw a rectangle area defined by (x0, y0) to (x1, y1) with the given raw RGB565 pixels
+        /// from a slice.
+        /// 
+        /// The pixel data must be provided in row-major order (top-left to bottom-right).
+        /// The length of the `pixels` slice must be equal to the rectangle area multiplied by 2.
+        pub fn draw_area_from_slice(
+            &mut self,
+            x0: u8,
+            y0: u8,
+            x1: u8,
+            y1: u8,
+            pixels: &[u8],
+        ) -> Result<(), DisplayError<PINERR, SPIERR>> {
+            // Clamp coordinates to display bounds
+            // In debug mode, assert the coordinates are valid
+            debug_assert!(x1 <= 127);
+            debug_assert!(y1 <= 127);
+            debug_assert!(x1 >= x0);
+            debug_assert!(y1 >= y0);
+            let x0 = x0.min(127);
+            let y0 = y0.min(127);
+            let x1 = x1.min(127);
+            let y1 = y1.min(127);
+            let width = (x1 - x0 + 1) as u32;
+            let height = (y1 - y0 + 1) as u32;
+            debug_assert!((width * height * 2) as usize == pixels.len());
+
+            self.set_address_window(x0, y0, x1, y1)?;
+            self.send_command(&WriteRamCommand {})?;
+            self.dc.set_high().map_err(|e| DisplayError::PinError(e))?;
+            self.cs.set_low().map_err(|e| DisplayError::PinError(e))?;
+
+            // Transfer the pixel data
+            self.spi
+                .write(pixels)
+                .map_err(|e| DisplayError::SpiError(e))?;
+
+            self.cs.set_high().map_err(|e| DisplayError::PinError(e))?;
+            Ok(())
+        }
     }
 
     impl<SPI, CS, DC, RST, DELAYER, PINERR, SPIERR> DrawTarget

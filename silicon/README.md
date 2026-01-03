@@ -6,8 +6,8 @@ from an SDCard to a PWM-based Audio DAC (with hardware streaming support), and m
 and the buttons for a graphical interface.
 
 This project is part of a larger course taught at Telecom Nancy (France) about designing RISC-V based
-systems using different tools like WHDL, Silice, Verilog and FPGA boards sucha as the ULX3S (Lattice ECP5 based board)
-and the DE1-SoC (Altera Cyclone V based board). *See [requirements](https://gist.github.com/sylefeb/ea83119db9a07d45db2cae49fc3ea471) for more details.*
+systems using different tools like VHDL, Silice, Verilog and FPGA boards such as the ULX3S (Lattice ECP5 board)
+and the DE1-SoC (Altera Cyclone V board). *See [requirements](https://gist.github.com/sylefeb/ea83119db9a07d45db2cae49fc3ea471) for more details.*
 
 ## Features
 
@@ -17,7 +17,7 @@ and the DE1-SoC (Altera Cyclone V based board). *See [requirements](https://gist
 - [x] **!** Menu with Album list (e.g. one per directory on the SDCard)
 - [x] **!** Play/Pause control using buttons
 - [x] **!** On end of track, automatically gets back to the Album list
-- [ ] **!** Display track art when playing
+- [x] **!** Display track art when playing
 - [ ] **!** LED effect (baked in the hardware) -- *it might not be related to the music*
 
 #### Assignment Bonus - Additional features to implement if time permits
@@ -26,6 +26,7 @@ and the DE1-SoC (Altera Cyclone V based board). *See [requirements](https://gist
 - [ ] **!** On-launch sound effect and/or sound made on the hardware sound generator
 - [x] **!** Color screen
 - [ ] **!** Animation while playing (OLED display and/or LEDs)
+- [ ] Sound in the menu *(not clear if it's a sound effect on button press, or if music should keep playing in the menu)*
 - [ ] **!** Volume control using buttons and LED indicator
 - [ ] White (Brown? Pink?) noise generator 
 - [ ] Any easter egg you can think of!
