@@ -1,10 +1,21 @@
 use crate::{
-    VoidUnwrap, app::{AppState, SdDirState}, delay_ms, display::BinWrapDrawTarget, fs::VolumeManager, peripheral::{LedBank, OledDisplay}
+    VoidUnwrap,
+    app::{AppState, SdDirState},
+    delay_ms,
+    display::BinWrapDrawTarget,
+    fs::VolumeManager,
+    peripheral::OledDisplay,
 };
-use embedded_graphics::{image::Image, mono_font::{self, MonoTextStyle, MonoTextStyleBuilder}, pixelcolor::Rgb565, prelude::{DrawTarget, Drawable, Point, RgbColor as _}, text::{Alignment, Text, renderer::CharacterStyle}};
+use embedded_graphics::{
+    image::Image,
+    mono_font::{self, MonoTextStyle, MonoTextStyleBuilder},
+    pixelcolor::Rgb565,
+    prelude::{Drawable, Point, RgbColor as _},
+    text::Text,
+};
 use embedded_hal::digital::{InputPin, OutputPin};
 use embedded_sdmmc::{Mode, RawDirectory};
-use heapless::{String, format};
+use heapless::format;
 use silicon_hal::display;
 
 const AUDIO_SAMPLE_RATE: usize = 48000; // 48kHz
@@ -74,13 +85,14 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
                 // Check if the forward button is pressed
                 if forward_btn {
                     // TODO: Skip will fail if we are near EOF - handle that case (https://github.com/fusetim/rusty-soc/issues/1)
-                    let _ = mng.file_seek_from_current(audio_file, 938*512); // Skip forward ~10s (assuming 48kHz mono 8-bit)
+                    let _ = mng.file_seek_from_current(audio_file, 938 * 512); // Skip forward ~10s (assuming 48kHz mono 8-bit)
                     // Simple debounce - wait 300ms
                     delay_ms(300);
                     cycle = 0; // Force immediate progress update after unpausing
-                } else if backward_btn { // Check if the backward button is pressed
+                } else if backward_btn {
+                    // Check if the backward button is pressed
                     // TODO: Going backward will fail if we are near the start of the file - handle that case (https://github.com/fusetim/rusty-soc/issues/1)
-                    let _ = mng.file_seek_from_current(audio_file, -(938*512)); // Skip backward ~10s
+                    let _ = mng.file_seek_from_current(audio_file, -(938 * 512)); // Skip backward ~10s
                     // Simple debounce - wait 300ms
                     delay_ms(300);
                     cycle = 0; // Force immediate progress update after unpausing
@@ -115,7 +127,8 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
                 }
             }
             cycle += 1;
-            if cycle >= 47 { // ~500ms at 48kHz mono 8-bit with 512-byte reads
+            if cycle >= 47 {
+                // ~500ms at 48kHz mono 8-bit with 512-byte reads
                 cycle = 0;
             }
         }
@@ -151,12 +164,16 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
 }
 
 /// Display the cover art for the current title.
-/// 
+///
 /// This function attempts to open and display a "art.raw" file from the given title directory.
 /// It should be encoded as a 128x128 RGB565 row-major raw image.
-/// 
+///
 /// If the file is not found, ... TODO
-pub fn display_cover_art(display: &mut OledDisplay<display::Initialized>, mng: &mut VolumeManager, title_dir: RawDirectory) {
+pub fn display_cover_art(
+    display: &mut OledDisplay<display::Initialized>,
+    mng: &mut VolumeManager,
+    title_dir: RawDirectory,
+) {
     const X_START: u8 = 0;
     const Y_START: u8 = 0;
 
@@ -209,14 +226,19 @@ pub fn display_cover_art(display: &mut OledDisplay<display::Initialized>, mng: &
 }
 
 /// Display the track progress on the OLED display.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `display` - The OLED display to draw on.
 /// * `elapsed` - The elapsed time in seconds.
 /// * `total` - The total duration of the track in seconds.
 /// * `is_playing` - Whether the track is currently playing or paused.
-pub fn display_track_progress(display: &mut OledDisplay<display::Initialized>, elapsed: u32, total: u32, is_playing: bool) {
+pub fn display_track_progress(
+    display: &mut OledDisplay<display::Initialized>,
+    elapsed: u32,
+    total: u32,
+    is_playing: bool,
+) {
     // TODO: Implement a progress bar on the OLED display
     // For now, we just print the elapsed time in seconds
     let progress = elapsed * 8 / total;
@@ -240,12 +262,12 @@ pub fn display_track_progress(display: &mut OledDisplay<display::Initialized>, e
         .text_color(Rgb565::WHITE)
         .background_color(Rgb565::BLACK)
         .build();
-    let pos = Point::new(8, 128-2); // Bottom-left corner
+    let pos = Point::new(8, 128 - 2); // Bottom-left corner
     let text = Text::new(&progress_str, pos, CHARACTER_STYLE);
     let _ = text.draw(display);
 
     // Draw play/pause icon
-    let icon_pos = Point::new(0, 128-8); // Bottom-left
+    let icon_pos = Point::new(0, 128 - 8); // Bottom-left
     let icon = if is_playing {
         glyph::PLAY_GLYPH
     } else {
@@ -262,35 +284,17 @@ mod glyph {
 
     mod raw {
         pub const PLAY: [u8; 8] = [
-            0b11000000,
-            0b11100000,
-            0b11110000,
-            0b11111000,
-            0b11110000,
-            0b11100000,
-            0b11000000,
+            0b11000000, 0b11100000, 0b11110000, 0b11111000, 0b11110000, 0b11100000, 0b11000000,
             0b00000000,
         ];
 
         pub const PAUSE: [u8; 8] = [
-            0b11011000,
-            0b11011000,
-            0b11011000,
-            0b11011000,
-            0b11011000,
-            0b11011000,
-            0b11011000,
+            0b11011000, 0b11011000, 0b11011000, 0b11011000, 0b11011000, 0b11011000, 0b11011000,
             0b00000000,
         ];
 
         pub const CURSOR: [u8; 8] = [
-            0b00011000,
-            0b00111100,
-            0b01111110,
-            0b11111111,
-            0b01111110,
-            0b00111100,
-            0b00011000,
+            0b00011000, 0b00111100, 0b01111110, 0b11111111, 0b01111110, 0b00111100, 0b00011000,
             0b00000000,
         ];
     }

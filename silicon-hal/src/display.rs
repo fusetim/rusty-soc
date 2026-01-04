@@ -465,7 +465,7 @@ mod graphics {
 
         /// Draw a rectangle area defined by (x0, y0) to (x1, y1) with the given raw RGB565 pixels
         /// from a slice.
-        /// 
+        ///
         /// The pixel data must be provided in row-major order (top-left to bottom-right).
         /// The length of the `pixels` slice must be equal to the rectangle area multiplied by 2.
         pub fn draw_area_from_slice(
