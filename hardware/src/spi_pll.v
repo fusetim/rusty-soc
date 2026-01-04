@@ -4,20 +4,20 @@
 /// needed for the SPI clocks.
 ///
 /// This module takes in a 25MHz reference clock and generates
-/// 160MHz, 80MHz, 20MHz, 5MHz clocks using a PLL.
+/// 80MHz, 40MHz, 20MHz, 5MHz clocks using a PLL.
 module spi_pll(
   input clk_25, 
   input rst_n,
-  output wire clk_160, 
   output wire clk_80,
+  output wire clk_40,
   output wire clk_20,
   output wire clk_5
 );
 
   // Instantiate the PLL primitive.
   (* FREQUENCY_PIN_CLKI="25" *)
-  (* FREQUENCY_PIN_CLKOP="160" *)
-  (* FREQUENCY_PIN_CLKOS="80" *)
+  (* FREQUENCY_PIN_CLKOP="80" *)
+  (* FREQUENCY_PIN_CLKOS="40" *)
   (* FREQUENCY_PIN_CLKOS2="20" *)
   (* FREQUENCY_PIN_CLKOS3="5" *)
   (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
@@ -56,11 +56,11 @@ module spi_pll(
     //  ecppll -i 25 --clkout0 160 --clkout1 80 --clkout2 20 --clkout3 5
     //
     .CLKI_DIV(5),      // REF CLK DIV: 25MHz -> 5MHz
-    .CLKFB_DIV(32),    // FB DIV: 5MHz -> 160MHz
-    .CLKOP_DIV(4),     // 160MHz out1
-    .CLKOS_DIV(8),     // 80MHz out2
-    .CLKOS2_DIV(32),   // 20MHz out3
-    .CLKOS3_DIV(128),  // 5MHz out4
+    .CLKFB_DIV(16),    // FB DIV: 5MHz -> 80MHz
+    .CLKOP_DIV(7),     // 80MHz out1
+    .CLKOS_DIV(14),    // 40MHz out2
+    .CLKOS2_DIV(28),   // 20MHz out3
+    .CLKOS3_DIV(112),  // 5MHz out4
 
     ////////
     /// Phase configuration
@@ -68,20 +68,20 @@ module spi_pll(
 
     // You can't really see phase offsets in megahertz signals with
     // the naked eye, so this demo sets a 0° offset across the board.
-    .CLKOP_CPHASE(3),
+    .CLKOP_CPHASE(6),
     .CLKOP_FPHASE(0),
     .CLKOP_TRIM_DELAY(0),
     .CLKOP_TRIM_POL("RISING"),
 
-    .CLKOS_CPHASE(7),
+    .CLKOS_CPHASE(13),
     .CLKOS_FPHASE(0),
     .CLKOS_TRIM_DELAY(0),
     .CLKOS_TRIM_POL("RISING"),
 
-    .CLKOS2_CPHASE(31),
+    .CLKOS2_CPHASE(27),
     .CLKOS2_FPHASE(0),
 
-    .CLKOS3_CPHASE(127),
+    .CLKOS3_CPHASE(111),
     .CLKOS3_FPHASE(0),
   ) pll(
     ////////
@@ -93,13 +93,13 @@ module spi_pll(
     .RST(~rst_n),
     // The PLL's reference is the external 25MHz clock.
     .CLKI(clk_25),
-    // We configured CLKOP as the feedback output. That's our 160MHz
+    // We configured CLKOP as the feedback output. That's our 80MHz
     // clock.
-    .CLKFB(clk_160),
+    .CLKFB(clk_80),
 
     // The output clocks signals.
-    .CLKOP(clk_160),
-    .CLKOS(clk_80),
+    .CLKOP(clk_80),
+    .CLKOS(clk_40),
     .CLKOS2(clk_20),
     .CLKOS3(clk_5),
 
@@ -124,15 +124,15 @@ endmodule
 module spi_pll(
   input clk_25, 
   input rst_n,
-  output wire clk_160, 
   output wire clk_80,
+  output wire clk_40,
   output wire clk_20,
   output wire clk_5
 );
 
   // In simulation, just pass through the 25MHz clock.
-  assign clk_160 = clk_25;
   assign clk_80 = clk_25;
+  assign clk_40 = clk_25;
   assign clk_20 = clk_25;
   assign clk_5 = clk_25;
 
