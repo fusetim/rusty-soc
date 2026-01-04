@@ -8,9 +8,9 @@ unit audio_streamer_peripheral(
     input  uint32       mem_wr_data,
     input  uint4        mem_wr_en,
     output! uint32      mem_rd_data(32h00000000),
-    // Audio Output signals
-    output uint4        audio_left_out(4b0000),
-    output uint4        audio_right_out(4b0000),
+    // Audio DAC Input signals
+    output uint8        audio_left_sample(8h00),
+    output uint8        audio_right_sample(8h00),
     // Peripheral enabled signal - indicates if audio streaming is active
     output uint1        enabled(0)
 ) {
@@ -30,25 +30,13 @@ unit audio_streamer_peripheral(
     uint10 buffer_write_cursor(0); // write cursor (end of the ring buffer)
     // length is write - read (modulo buffer size)
 
-    // DAC output samples
-    uint8 audio_left_sample(8b00000000);
-    uint8 audio_right_sample(8b00000000);
-
     // 8kHz sampling rate "reference" clock
     uint16 dac_counter(0);
 
-    // Instantiate DAC units for left and right audio channels
-    dac dac_left(
-        in <: audio_left_sample,
-        out :> audio_left_out
-    );
-
-    dac dac_right(
-        in <: audio_right_sample,
-        out :> audio_right_out
-    );
-
     always {
+        // Assign
+        enabled := control_enable;
+
         // Handle memory-mapped I/O
         uint10 mem_addr_ext = {mem_addr, 2b00}; // Extend to word-aligned address
         uint1 access_reg_ctrl        = (mem_addr_ext == REG_CONTROL_RW);

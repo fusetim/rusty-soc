@@ -44,25 +44,11 @@ unit dac_peripheral(
     input  uint4        mem_wr_en,
     // output! uint32   mem_rd_data(32b0), - No reads for this peripheral
     // Audio Output signals
-    output uint4        audio_left_out(4b0000),
-    output uint4        audio_right_out(4b0000)
+    output uint8        audio_left_sample(8h00),
+    output uint8        audio_right_sample(8h00)
 ) {
     // Register addresses (word-aligned)
     uint10 REG_OUTPUT_W(10h00); // Output Write
-
-    uint8 audio_left_sample(8b00000000);
-    uint8 audio_right_sample(8b00000000);
-
-    // Instantiate DAC units for left and right audio channels
-    dac dac_left(
-        in <: audio_left_sample,
-        out :> audio_left_out
-    );
-
-    dac dac_right(
-        in <: audio_right_sample,
-        out :> audio_right_out
-    );
 
     always {
         uint10 mem_addr_ext = {mem_addr, 2b00}; // Extend to word-aligned address
