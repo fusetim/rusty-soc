@@ -1,9 +1,8 @@
 // Pre-compilation script, embeds compiled code within a string
 // Code has to be compiled into firmware/code.hex before
-$$dofile('pre_include_compiled.lua')
 
 // -- Includes -- //
-
+import('./dmem.v')
 // Includes the processor
 $include('../lib/silice/projects/ice-v/CPUs/ice-v.si')
 
@@ -108,7 +107,22 @@ $$end
     rv32i_cpu cpu( mem <:> memio );
 
     // Instantiate the memory (BRAM)
-    bram uint32 ram<"bram_wmask_byte">[$1<<(addrW-1)$] = $meminit$;
+    //bram uint32 ram<"bram_wmask_byte">[$1<<(addrW-1)$] = $meminit$;
+    dmem ram (
+        clock <: clock
+    );
+
+    // precursors for peripheral memory-mapped I/O access //
+    uint8 audio_left_sample(8h00);
+    uint8 audio_right_sample(8h00);
+    dac audio_left (
+        in  <: audio_left_sample,
+        out :> audio_l,
+    );
+    dac audio_right (
+        in  <: audio_right_sample,
+        out :> audio_r,
+    );
 
     // -- Peripherals -- //
     // GPIO Peripheral
@@ -205,8 +219,8 @@ $$end
         // mem_wr_en   <: prev_mem_rw,
         // mem_rd_data :> memio.rdata,
         // Audio Output signals
-        audio_left_out  :> audio_l,
-        audio_right_out :> audio_r,
+        // audio_left_out  :> audio_l,
+        // audio_right_out :> audio_r,
         // Peripheral enabled signal
         enabled         :> audio_streamer_en
     );
@@ -239,8 +253,8 @@ $$end
 
     always { 
         // Audio Switch - select between DAC and Audio Streamer outputs
-        // audio_l = audio_streamer_en ? audio_streamer.audio_left_out : dac.audio_left_out;
-        // audio_r = audio_streamer_en ? audio_streamer.audio_right_out : dac.audio_right_out;
+        audio_left_sample = audio_streamer_en ? audio_streamer.audio_left_sample : dac.audio_left_sample;
+        audio_right_sample = audio_streamer_en ? audio_streamer.audio_right_sample : dac.audio_right_sample;
 
         // Peripheral enable signals
         uint1 peripheral_en = prev_mem_addr[$periph_bit$,1]; // base address: 1000000000000000 - 0x20000

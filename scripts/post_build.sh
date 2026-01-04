@@ -12,6 +12,7 @@ CMD_LD="riscv64-unknown-elf-ld"
 CMD_GCC="riscv64-unknown-elf-gcc"
 CMD_OBJCOPY="riscv64-unknown-elf-objcopy"
 CMD_RANLIB="riscv64-unknown-elf-ranlib"
+CMD_HEXDUMP="hexdump"
 
 # If OUTPUT_FILE = "silicon", then we can assemble all the things for flashing on FPGA
 if [[ "$OUTPUT_FILE" == "silicon" ]]; then
@@ -23,6 +24,7 @@ if [[ "$OUTPUT_FILE" == "silicon" ]]; then
     #$CMD_RANLIB "$OUTPUT_DIR/libsilicon.a"
     $CMD_OBJCOPY -O verilog "$BUILD_ARTIFACT" "$OUTPUT_DIR/silicon.hex"
     $CMD_OBJCOPY -O binary "$BUILD_ARTIFACT" "$OUTPUT_DIR/silicon.bin"
+    $CMD_HEXDUMP -v -e '1/4 "%08x\n"' "$OUTPUT_DIR/silicon.bin" > "$OUTPUT_DIR/silicon.mem"
     echo "Generated silicon.hex and silicon.bin for FPGA."
 
     # Print the full path to the silicon.hex file
