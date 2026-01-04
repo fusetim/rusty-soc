@@ -25,10 +25,10 @@ $include('./display.si')
 // Setup memory size
 // - addrW is the address bus width
 // - the topmost bit is used to indicate peripheral access
-// - actual RAM size is 96kB (24576 words = 98304 bytes)
+// - actual RAM size is 112kB (28672 words = 114688 bytes)
 // - See ../svd.xml for memory map
 $$addrW      = 16
-$$ramDepth   = 24576
+$$ramDepth   = 28672
 $$periph_bit = addrW-1
 // Configure BRAM (needed for write mask)
 $$config['bram_wmask_byte_wenable_width'] = 'data'

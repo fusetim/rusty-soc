@@ -27,7 +27,7 @@ and the DE1-SoC (Altera Cyclone V board). *See [requirements](https://gist.githu
 - [x] **!** Color screen
 - [ ] **!** Animation while playing (OLED display and/or LEDs)
 - [ ] Sound in the menu *(not clear if it's a sound effect on button press, or if music should keep playing in the menu)*
-- [ ] **!** Volume control using buttons and LED indicator
+- [x] **!** Volume control using buttons and LED indicator
 - [ ] White (Brown? Pink?) noise generator 
 - [ ] Any easter egg you can think of!
 

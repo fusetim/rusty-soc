@@ -60,6 +60,8 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
         leds.led1.set_high();
 
         // Start streaming audio
+        let mut snd_vol = 8; // Volume level 1-8/8
+        let mut led_vol_timeout = 0; // Timeout counter for volume LED indication
         let mut paused = false;
         let mut buffer = [0u8; 512];
         let mut cycle = 0; // Count loop iterations (it allows us to reevaluate the progress every ~500ms / 47 iters)
@@ -70,6 +72,8 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
                 let back_btn = btns.btn3.is_high().unwrap_or(false);
                 let forward_btn = btns.btn6.is_high().unwrap_or(false);
                 let backward_btn = btns.btn5.is_high().unwrap_or(false);
+                let vol_up_btn = btns.btn2.is_high().unwrap_or(false);
+                let vol_down_btn = btns.btn1.is_high().unwrap_or(false);
                 // Check if the pause button is pressed
                 if pause_btn {
                     paused = !paused;
@@ -97,22 +101,61 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
                     delay_ms(300);
                     cycle = 0; // Force immediate progress update after unpausing
                 }
+                // Check volume up button
+                if led_vol_timeout >= 24*7 {
+                    // Debouncing for volume buttons (ignore if < 500ms since last volume change)
+                } else if vol_up_btn {
+                    if snd_vol < 8 {
+                        snd_vol += 1;
+                    }
+                    led_vol_timeout = 48 * 4; // Show volume level for 4 seconds (assuming 48kHz sample rate and 512-byte reads)
+                } else if vol_down_btn { // Check volume down button
+                    if snd_vol > 1 {
+                        snd_vol -= 1;
+                    }
+                    led_vol_timeout = 48 * 4; // Show volume level for 4 seconds (assuming 48kHz sample rate and 512-byte reads)
+                }
+            }
+
+            // Display LED volume level indication (if needed)
+            if led_vol_timeout > 0 {
+                led_vol_timeout -= 1;
+                if led_vol_timeout == 0 {
+                    leds.set_all_low();
+                } else {
+                    leds.set_all_states([
+                        snd_vol >= 1,
+                        snd_vol >= 2,
+                        snd_vol >= 3,
+                        snd_vol >= 4,
+                        snd_vol >= 5,
+                        snd_vol >= 6,
+                        snd_vol >= 7,
+                        snd_vol >= 8,
+                    ]);
+                }
             }
 
             // Read audio data from the file
             if !paused {
-                leds.led2.set_low();
+                if led_vol_timeout == 0 {  leds.led2.set_low(); }
                 if let Ok(bytes_read) = mng.read(audio_file, &mut buffer) {
-                    leds.led2.set_high();
+                    if led_vol_timeout == 0 {  leds.led2.set_high(); }
                     if bytes_read == 0 {
                         break; // End of file
                     }
-                    leds.led3.set_high();
+                    if led_vol_timeout == 0 {  leds.led3.set_high(); }
+                    // Apply volume adjustment (simple scaling)
+                    for sample in buffer[..bytes_read].iter_mut() {
+                        let scaled = *sample >> (8 - snd_vol); // Scale down to 0-8/8 volume
+                        *sample = scaled as u8;
+                    }
+
                     let mut written = 0;
                     while written < bytes_read {
                         written += audio_streamer.write_samples(&buffer[written..bytes_read]);
                     }
-                    leds.led3.set_low();
+                    if led_vol_timeout == 0 {  leds.led3.set_low(); }
                 } else {
                     // Error reading file - stop playback
                     break;
