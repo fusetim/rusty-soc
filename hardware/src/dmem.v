@@ -1,4 +1,4 @@
-`define DEPTH 28672
+`define DEPTH 28672 // 112kB RAM
 `define ADDR_SIZE 32
 `define DATA_SIZE 32
 `define WORD_SIZE 4

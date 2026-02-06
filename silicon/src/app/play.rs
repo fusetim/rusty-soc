@@ -102,14 +102,15 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
                     cycle = 0; // Force immediate progress update after unpausing
                 }
                 // Check volume up button
-                if led_vol_timeout >= 24*7 {
+                if led_vol_timeout >= 24 * 7 {
                     // Debouncing for volume buttons (ignore if < 500ms since last volume change)
                 } else if vol_up_btn {
                     if snd_vol < 8 {
                         snd_vol += 1;
                     }
                     led_vol_timeout = 48 * 4; // Show volume level for 4 seconds (assuming 48kHz sample rate and 512-byte reads)
-                } else if vol_down_btn { // Check volume down button
+                } else if vol_down_btn {
+                    // Check volume down button
                     if snd_vol > 1 {
                         snd_vol -= 1;
                     }
@@ -138,13 +139,19 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
 
             // Read audio data from the file
             if !paused {
-                if led_vol_timeout == 0 {  leds.led2.set_low(); }
+                if led_vol_timeout == 0 {
+                    leds.led2.set_low();
+                }
                 if let Ok(bytes_read) = mng.read(audio_file, &mut buffer) {
-                    if led_vol_timeout == 0 {  leds.led2.set_high(); }
+                    if led_vol_timeout == 0 {
+                        leds.led2.set_high();
+                    }
                     if bytes_read == 0 {
                         break; // End of file
                     }
-                    if led_vol_timeout == 0 {  leds.led3.set_high(); }
+                    if led_vol_timeout == 0 {
+                        leds.led3.set_high();
+                    }
                     // Apply volume adjustment (simple scaling)
                     for sample in buffer[..bytes_read].iter_mut() {
                         let scaled = *sample >> (8 - snd_vol); // Scale down to 0-8/8 volume
@@ -155,7 +162,9 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
                     while written < bytes_read {
                         written += audio_streamer.write_samples(&buffer[written..bytes_read]);
                     }
-                    if led_vol_timeout == 0 {  leds.led3.set_low(); }
+                    if led_vol_timeout == 0 {
+                        leds.led3.set_low();
+                    }
                 } else {
                     // Error reading file - stop playback
                     break;

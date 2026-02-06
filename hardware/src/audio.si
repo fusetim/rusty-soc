@@ -11,6 +11,7 @@ unit audio_streamer_peripheral(
     // Audio DAC Input signals
     output uint8        audio_left_sample(8h00),
     output uint8        audio_right_sample(8h00),
+    output uint1        sample_valid(0), // Indicates when a sample is valid (ready to be consumed by the DAC)
     // Peripheral enabled signal - indicates if audio streaming is active
     output uint1        enabled(0)
 ) {
@@ -36,6 +37,7 @@ unit audio_streamer_peripheral(
     always {
         // Assign
         enabled := control_enable;
+        sample_valid = control_enable && dac_counter != 0 && (buffer_write_cursor != buffer_read_cursor); // sample is valid when enabled, dac_counter is not 0 (so at the right timing) and buffer is not empty
 
         // Handle memory-mapped I/O
         uint10 mem_addr_ext = {mem_addr, 2b00}; // Extend to word-aligned address

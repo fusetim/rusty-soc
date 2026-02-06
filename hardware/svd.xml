@@ -273,6 +273,23 @@
                         </field>
                     </fields>
                 </register>
+                <register>
+                    <name>AUDIO_VIZ</name>
+                    <description>Control of the audio viz pins</description>
+                    <addressOffset>0x10</addressOffset>
+                    <size>8</size>
+                    <access>read-write</access>
+                    <resetValue>0x0000</resetValue>
+                    <fields>
+                        <field>
+                            <name>ENABLE</name>
+                            <description>Read/Set the enable state of the audio visualization. If enabled, the audio visualization is active, and on-board LEDs reflect the audio signal and not the GPIO state.</description>
+                            <bitOffset>0</bitOffset>
+                            <bitWidth>1</bitWidth>
+                            <access>read-write</access>
+                        </field>
+                    </fields>
+                </register>
             </registers>
         </peripheral>
 

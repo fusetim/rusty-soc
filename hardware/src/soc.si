@@ -19,6 +19,8 @@ $include('./dac.si')
 $include('./audio.si')
 // Includes the DISPLAY peripheral
 $include('./display.si')
+// Includes the Audio Viz module
+import('./audio_viz.v')
 // -- End of Includes -- //
 
 // Setup memory size
@@ -124,6 +126,17 @@ $$end
         out :> audio_r,
     );
 
+    uint1 audio_viz_en(1);
+    uint1 sample_valid(0);
+    audio_viz audio_viz (
+        clk <: sample_valid, // clock the visualization logic at the audio sample rate (8kHz) so it updates at the right timing
+        rst <: audio_viz_en, // reset when disabled (so it starts in a known state when enabled)
+        // Audio input
+        // audio_in <: audio_left_sample,
+        // Visualization output (for now just the left channel enveloppe)
+        //viz_out :> leds
+    );
+
     // -- Peripherals -- //
     // GPIO Peripheral
     uint1 gpio_en(0);
@@ -137,7 +150,7 @@ $$end
         // mem_wr_en   <: prev_mem_rw,
         // mem_rd_data :> memio.rdata,
         // GPIO signals
-        leds        :> leds,
+        //leds        :> leds,
         btns        <: btns,
         // SPI - SD Card
         sd_cs       :> sd_csn,
@@ -150,6 +163,7 @@ $$end
         //oled_clk    :> oled_clk,  - handled by SPI1 peripheral
         oled_dc     :> oled_dc,
         oled_res    :> oled_resn,
+        audio_viz_en :> audio_viz_en,
     );
 
     // SPI Peripherals
@@ -222,7 +236,8 @@ $$end
         // audio_left_out  :> audio_l,
         // audio_right_out :> audio_r,
         // Peripheral enabled signal
-        enabled         :> audio_streamer_en
+        enabled         :> audio_streamer_en,
+        sample_valid    :> sample_valid, 
     );
 
     // Display Peripheral for OLED Screen with Hardware Framebuffer
@@ -254,7 +269,9 @@ $$end
     always { 
         // Audio Switch - select between DAC and Audio Streamer outputs
         audio_left_sample = audio_streamer_en ? audio_streamer.audio_left_sample : dac.audio_left_sample;
+        audio_viz.audio_in = audio_streamer_en ? audio_streamer.audio_left_sample : dac.audio_left_sample; // feed visualization with the same audio input (for now just the left channel)
         audio_right_sample = audio_streamer_en ? audio_streamer.audio_right_sample : dac.audio_right_sample;
+        leds = audio_viz_en ? audio_viz.viz_out : gpio.leds; // display visualization on LEDs when enabled, otherwise GPIO controlled
 
         // Peripheral enable signals
         uint1 peripheral_en = prev_mem_addr[$periph_bit$,1]; // base address: 1000000000000000 - 0x20000

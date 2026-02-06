@@ -8,6 +8,8 @@ pub struct RegisterBlock {
     spi_sdcard: SpiSdcard,
     _reserved3: [u8; 0x02],
     spi_oled: SpiOled,
+    _reserved4: [u8; 0x02],
+    audio_viz: AudioViz,
 }
 impl RegisterBlock {
     #[doc = "0x00 - Control of the output of the on-board LEDs."]
@@ -30,6 +32,11 @@ impl RegisterBlock {
     pub const fn spi_oled(&self) -> &SpiOled {
         &self.spi_oled
     }
+    #[doc = "0x10 - Control of the audio viz pins"]
+    #[inline(always)]
+    pub const fn audio_viz(&self) -> &AudioViz {
+        &self.audio_viz
+    }
 }
 #[doc = "LED (rw) register accessor: Control of the output of the on-board LEDs.\n\nYou can [`read`](crate::Reg::read) this register and get [`led::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`led::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@led`] module"]
 #[doc(alias = "LED")]
@@ -51,3 +58,8 @@ pub mod spi_sdcard;
 pub type SpiOled = crate::Reg<spi_oled::SpiOledSpec>;
 #[doc = "Control of the input-output pins directly wired to the OLED display SPI interface. Some pins are input-only or output-only."]
 pub mod spi_oled;
+#[doc = "AUDIO_VIZ (rw) register accessor: Control of the audio viz pins\n\nYou can [`read`](crate::Reg::read) this register and get [`audio_viz::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`audio_viz::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@audio_viz`] module"]
+#[doc(alias = "AUDIO_VIZ")]
+pub type AudioViz = crate::Reg<audio_viz::AudioVizSpec>;
+#[doc = "Control of the audio viz pins"]
+pub mod audio_viz;

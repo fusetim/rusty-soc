@@ -21,12 +21,15 @@ unit gpio_peripheral(
     output! uint1        oled_clk(1b0),
     output! uint1        oled_dc(1b0),
     output! uint1        oled_res(1b1),
+    // Audio Viz
+    output uint1        audio_viz_en
 ) {
     // Register addresses (word-aligned)
     uint10 REG_LED_RW(10h00); // LED Read/Write
     uint10 REG_BTN_R(10h04); // Button Read-only
     uint10 REG_SPI_SD_RW(10h08); // SPI SD Card Read/Write
     uint10 REG_SPI_OLED_RW(10h0C); // SPI OLED Display Read/Write
+    uint10 REG_AUDIO_VIZ_RW(10h10); // Audio Viz Read/Write (for enabling/disabling visualization)
 
     always {
         uint10 mem_addr_ext = {mem_addr, 2b00}; // Extend to word-aligned address
@@ -34,12 +37,14 @@ unit gpio_peripheral(
         uint1 button_access          = (mem_addr_ext == REG_BTN_R);
         uint1 spi_sd_access          = (mem_addr_ext == REG_SPI_SD_RW);
         uint1 spi_oled_access        = (mem_addr_ext == REG_SPI_OLED_RW);
+        uint1 audio_viz_access       = (mem_addr_ext == REG_AUDIO_VIZ_RW);
 
         // Handle read from GPIO peripheral
         mem_rd_data = (mem_en & leds_access) ? {24b0, leds} :
                       (mem_en & button_access) ? {25b0, btns} :
                       (mem_en & spi_sd_access) ? {28b0, sd_miso, sd_clk, sd_mosi, sd_cs} :
                       (mem_en & spi_oled_access) ? {27b0, oled_res, oled_dc, oled_clk, oled_mosi, oled_cs} :
+                      (mem_en & audio_viz_access) ? {31b0, audio_viz_en} :
                       32b0;
 
         // Handle write to GPIO peripheral
@@ -64,6 +69,9 @@ unit gpio_peripheral(
             oled_dc        = spi_oled_mask[3,1] ? mem_wr_data[3,1] : oled_dc;
             oled_res       = spi_oled_mask[4,1] ? mem_wr_data[4,1] : oled_res;
 
+            // Update Audio Viz enable signal
+            audio_viz_en   = (audio_viz_access && mem_wr_en[0]) ? mem_wr_data[0] : audio_viz_en;
+
         }
         if (rst) {
             leds = 8h00; // Reset LEDs to 0 on reset
@@ -85,6 +93,9 @@ unit gpio_peripheral(
                 __display("SPI OLED Display: CS=%b, MOSI=%b, CLK=%b, DC=%b, RES=%b",
                     oled_cs, oled_mosi, oled_clk, oled_dc, oled_res);
             }
-        $$end
+            if (mem_en & audio_viz_access) {
+                __display("Audio Viz Enable: %b", audio_viz_en);
+            }
+        $$endif
     }
 }
