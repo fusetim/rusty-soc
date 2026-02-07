@@ -11,5 +11,9 @@ rustflags = [
     "link-args=--gc-sections",
     "-Z",
     "no-unique-section-names",
+    "-Z",
+    "location-detail=none",
+    "-Z",
+    "fmt-debug=none",
 ]
 runner = "scripts/post_build.sh"
