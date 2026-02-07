@@ -16,12 +16,67 @@ use embedded_graphics::{
 use embedded_hal::digital::{InputPin, OutputPin};
 use embedded_sdmmc::{Mode, RawDirectory};
 use heapless::format;
-use silicon_hal::display;
+use silicon_hal::{
+    display,
+    gpio::{AudioViz, LedBank},
+};
 
 const AUDIO_SAMPLE_RATE: usize = 48000; // 48kHz
 const AUDIO_CHANNELS: usize = 1; // Mono
 const AUDIO_BIT_DEPTH: usize = 8; // 8-bit
 const AUDIO_DATA_RATE: usize = AUDIO_SAMPLE_RATE * AUDIO_CHANNELS * (AUDIO_BIT_DEPTH / 8); // Bytes per second
+
+/// LED can be managed by the software or by the audio visualizer (hardware).
+///
+/// This enum is a proxy for the LED control, allowing us to switch between software and hardware control of the LEDs.
+enum LedControl {
+    Software(LedBank),
+    AudioViz(AudioViz),
+}
+
+impl LedControl {
+    /// Switch to software control of the LEDs.
+    #[inline(always)]
+    fn switch_to_software(self) -> Self {
+        match self {
+            LedControl::Software(_) => self, // Already in software control
+            LedControl::AudioViz(av) => LedControl::Software(av.bring_down()),
+        }
+    }
+
+    /// Switch to audio visualizer control of the LEDs.
+    #[inline(always)]
+    fn switch_to_audio_viz(self) -> Self {
+        match self {
+            LedControl::AudioViz(_) => self, // Already in audio viz control
+            LedControl::Software(sb) => LedControl::AudioViz(AudioViz::new(sb)),
+        }
+    }
+
+    /// Apply a function to the LEDs if we are in software control mode.
+    fn software_do(&mut self, f: impl FnOnce(&mut LedBank)) {
+        match self {
+            LedControl::Software(sb) => f(sb),
+            LedControl::AudioViz(_) => { /* Nothing */ }
+        }
+    }
+
+    /// Get the underlying LedBank if we are in software control mode.
+    fn software_leds(&mut self) -> Option<&mut LedBank> {
+        match self {
+            LedControl::Software(sb) => Some(sb),
+            LedControl::AudioViz(_) => None,
+        }
+    }
+
+    /// Bring down and get the underlying LedBank
+    fn bring_down(self) -> LedBank {
+        match self {
+            LedControl::Software(sb) => sb,
+            LedControl::AudioViz(av) => av.bring_down(),
+        }
+    }
+}
 
 /// Run the Playing logic.
 ///
@@ -65,6 +120,7 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
         let mut paused = false;
         let mut buffer = [0u8; 512];
         let mut cycle = 0; // Count loop iterations (it allows us to reevaluate the progress every ~500ms / 47 iters)
+        let mut led_control = LedControl::AudioViz(AudioViz::new(leds));
         loop {
             // Handle inputs
             {
@@ -122,35 +178,38 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
             if led_vol_timeout > 0 {
                 led_vol_timeout -= 1;
                 if led_vol_timeout == 0 {
-                    leds.set_all_low();
+                    led_control = led_control.switch_to_audio_viz();
                 } else {
-                    leds.set_all_states([
-                        snd_vol >= 1,
-                        snd_vol >= 2,
-                        snd_vol >= 3,
-                        snd_vol >= 4,
-                        snd_vol >= 5,
-                        snd_vol >= 6,
-                        snd_vol >= 7,
-                        snd_vol >= 8,
-                    ]);
+                    led_control = led_control.switch_to_software(); // Switch to software control to show volume level
+                    if let Some(leds) = led_control.software_leds() {
+                        leds.set_all_states([
+                            snd_vol >= 1,
+                            snd_vol >= 2,
+                            snd_vol >= 3,
+                            snd_vol >= 4,
+                            snd_vol >= 5,
+                            snd_vol >= 6,
+                            snd_vol >= 7,
+                            snd_vol >= 8,
+                        ]);
+                    }
                 }
             }
 
             // Read audio data from the file
             if !paused {
                 if led_vol_timeout == 0 {
-                    leds.led2.set_low();
+                    led_control.software_do(|leds| leds.led2.set_low().void_unwrap());
                 }
                 if let Ok(bytes_read) = mng.read(audio_file, &mut buffer) {
                     if led_vol_timeout == 0 {
-                        leds.led2.set_high();
+                        led_control.software_do(|leds| leds.led2.set_high().void_unwrap());
                     }
                     if bytes_read == 0 {
                         break; // End of file
                     }
                     if led_vol_timeout == 0 {
-                        leds.led3.set_high();
+                        led_control.software_do(|leds| leds.led3.set_high().void_unwrap());
                     }
                     // Apply volume adjustment (simple scaling)
                     for sample in buffer[..bytes_read].iter_mut() {
@@ -163,7 +222,7 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
                         written += audio_streamer.write_samples(&buffer[written..bytes_read]);
                     }
                     if led_vol_timeout == 0 {
-                        leds.led3.set_low();
+                        led_control.software_do(|leds| leds.led3.set_low().void_unwrap());
                     }
                 } else {
                     // Error reading file - stop playback
@@ -187,6 +246,7 @@ pub fn run_playing(state: AppState) -> Option<AppState> {
 
         // EOF reached, stop audio streamer
         mng.close_file(audio_file).void_unwrap();
+        let mut leds = led_control.bring_down(); // Ensure we are back in software control and get the LedBank back
         leds.led4.set_high();
 
         // Go back to the title menu

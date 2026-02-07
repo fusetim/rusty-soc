@@ -22,7 +22,7 @@ unit gpio_peripheral(
     output! uint1        oled_dc(1b0),
     output! uint1        oled_res(1b1),
     // Audio Viz
-    output uint1        audio_viz_en
+    output uint1        audio_viz_en(1b0)
 ) {
     // Register addresses (word-aligned)
     uint10 REG_LED_RW(10h00); // LED Read/Write
@@ -70,7 +70,7 @@ unit gpio_peripheral(
             oled_res       = spi_oled_mask[4,1] ? mem_wr_data[4,1] : oled_res;
 
             // Update Audio Viz enable signal
-            audio_viz_en   = (audio_viz_access && mem_wr_en[0]) ? mem_wr_data[0] : audio_viz_en;
+            audio_viz_en   = (audio_viz_access && mem_wr_en[0,1]) ? mem_wr_data[0,1] : audio_viz_en;
 
         }
         if (rst) {
@@ -96,6 +96,6 @@ unit gpio_peripheral(
             if (mem_en & audio_viz_access) {
                 __display("Audio Viz Enable: %b", audio_viz_en);
             }
-        $$endif
+        $$end
     }
 }

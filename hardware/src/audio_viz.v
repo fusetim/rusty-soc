@@ -29,9 +29,9 @@
 /// which is still a good approximation for visualization purposes (and does not make x10 on the synthesis phase).
 module audio_viz (
     input clk,
-    input rst,
     input [7:0] audio_in,
-    output reg [7:0] viz_out
+    output reg [7:0] viz_out,
+    input audio_viz_en = 1'b1,
 );
 
     // 1. Make sure he input is signed and ready for being squared
@@ -41,9 +41,11 @@ module audio_viz (
     reg signed [16:0] centered_audio;
     reg [13:0] energy_sample;
     always @(posedge clk) begin
-        centered_audio <= signed_audio - 128;
-        // This will be a 16-bit value, since the maximum value is 127*127 = 16129
-        energy_sample <= centered_audio * centered_audio; 
+        if (audio_viz_en) begin
+            centered_audio <= signed_audio - 128;
+            // This will be a 16-bit value, since the maximum value is 127*127 = 16129
+            energy_sample <= centered_audio * centered_audio; 
+        end
     end
 
     // 3. Accumulate the energy samples over a window of 4096 samples
@@ -72,14 +74,18 @@ module audio_viz (
 
     // 4. Compute the RMS energy and normalize it to fit into an 8-bit value
     always @(posedge clk) begin
-        viz_out[0] <= energy_accum[24:12] >= 4; // RMS > 0
-        viz_out[1] <= energy_accum[24:12] >= 16; // RMS > 0.125
-        viz_out[2] <= energy_accum[24:12] >= 64; // RMS > 0.25
-        viz_out[3] <= energy_accum[24:12] >= 256; // RMS > 0.5
-        viz_out[4] <= energy_accum[24:12] >= 512; // RMS > 1
-        viz_out[5] <= energy_accum[24:12] >= 1024; // RMS > 2
-        viz_out[6] <= energy_accum[24:12] >= 2048; // RMS > 4
-        viz_out[7] <= energy_accum[24:12] >= 4096; // RMS > 8
+        if (audio_viz_en) begin
+            viz_out[0] <= energy_accum[24:12] >= 4; // RMS > 0
+            viz_out[1] <= energy_accum[24:12] >= 16; // RMS > 0.125
+            viz_out[2] <= energy_accum[24:12] >= 64; // RMS > 0.25
+            viz_out[3] <= energy_accum[24:12] >= 256; // RMS > 0.5
+            viz_out[4] <= energy_accum[24:12] >= 512; // RMS > 1
+            viz_out[5] <= energy_accum[24:12] >= 1024; // RMS > 2
+            viz_out[6] <= energy_accum[24:12] >= 2048; // RMS > 4
+            viz_out[7] <= energy_accum[24:12] >= 4096; // RMS > 8
+        end else begin
+            viz_out <= 0; // If visualization is disabled, output 0
+        end
     end
 
 endmodule 

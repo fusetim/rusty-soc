@@ -130,7 +130,7 @@ $$end
     uint1 sample_valid(0);
     audio_viz audio_viz (
         clk <: sample_valid, // clock the visualization logic at the audio sample rate (8kHz) so it updates at the right timing
-        rst <: audio_viz_en, // reset when disabled (so it starts in a known state when enabled)
+        audio_viz_en <: audio_viz_en, // enable signal for the visualization (can be used to save power when visualization is not needed)
         // Audio input
         // audio_in <: audio_left_sample,
         // Visualization output (for now just the left channel enveloppe)

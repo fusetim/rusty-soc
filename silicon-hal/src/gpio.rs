@@ -815,3 +815,231 @@ impl SpiSdPins {
         Ok((miso_state, mosi_state, clk_state))
     }
 }
+
+pub struct LedBank {
+    pub led0: Pin<led_bank::Led0>,
+    pub led1: Pin<led_bank::Led1>,
+    pub led2: Pin<led_bank::Led2>,
+    pub led3: Pin<led_bank::Led3>,
+    pub led4: Pin<led_bank::Led4>,
+    pub led5: Pin<led_bank::Led5>,
+    pub led6: Pin<led_bank::Led6>,
+    pub led7: Pin<led_bank::Led7>,
+}
+
+impl LedBank {
+    /// Create a new LED bank from individual LED pins.
+    pub fn new(
+        led0: Pin<led_bank::Led0>,
+        led1: Pin<led_bank::Led1>,
+        led2: Pin<led_bank::Led2>,
+        led3: Pin<led_bank::Led3>,
+        led4: Pin<led_bank::Led4>,
+        led5: Pin<led_bank::Led5>,
+        led6: Pin<led_bank::Led6>,
+        led7: Pin<led_bank::Led7>,
+    ) -> Self {
+        Self {
+            led0,
+            led1,
+            led2,
+            led3,
+            led4,
+            led5,
+            led6,
+            led7,
+        }
+    }
+
+    /// Create a new LED bank from GPIO raw pins
+    pub fn from_gpio_pins(
+        gpio_led0: led_bank::Led0,
+        gpio_led1: led_bank::Led1,
+        gpio_led2: led_bank::Led2,
+        gpio_led3: led_bank::Led3,
+        gpio_led4: led_bank::Led4,
+        gpio_led5: led_bank::Led5,
+        gpio_led6: led_bank::Led6,
+        gpio_led7: led_bank::Led7,
+    ) -> Self {
+        Self::new(
+            Pin::new_output(gpio_led0),
+            Pin::new_output(gpio_led1),
+            Pin::new_output(gpio_led2),
+            Pin::new_output(gpio_led3),
+            Pin::new_output(gpio_led4),
+            Pin::new_output(gpio_led5),
+            Pin::new_output(gpio_led6),
+            Pin::new_output(gpio_led7),
+        )
+    }
+
+    /// Get mutable references to all LED pins as an array.
+    pub fn as_pins(&mut self) -> [&mut dyn OutputPin<Error = Infallible>; 8] {
+        [
+            &mut self.led0,
+            &mut self.led1,
+            &mut self.led2,
+            &mut self.led3,
+            &mut self.led4,
+            &mut self.led5,
+            &mut self.led6,
+            &mut self.led7,
+        ]
+    }
+
+    #[inline(always)]
+    pub fn set_all_low(&mut self) {
+        self.set_all_states([false; 8]);
+    }
+
+    #[inline(always)]
+    pub fn set_all_high(&mut self) {
+        self.set_all_states([true; 8]);
+    }
+
+    #[inline(always)]
+    pub fn set_all_states(&mut self, states: [bool; 8]) {
+        // Safety: We have exclusive access to all LED pins.
+        // For efficiency, we set all LED states in one operation by writing to the LED register directly.
+        let gpio = unsafe { crate::pac::Gpio::steal() };
+        unsafe {
+            gpio.led().write_with_zero(|w| {
+                let mut raw_bits: u16 = 0;
+                // Select all output for writing
+                raw_bits |= 0b11111111 << 8;
+                // Set state for each pins
+                for i in 0..8 {
+                    if states[i] {
+                        raw_bits |= 0b1 << i;
+                    }
+                }
+                // Apply
+                w.bits(raw_bits)
+            });
+        }
+    }
+}
+
+pub struct BtnBank {
+    pub btn1: Pin<btn_bank::Btn1>,
+    pub btn2: Pin<btn_bank::Btn2>,
+    pub btn3: Pin<btn_bank::Btn3>,
+    pub btn4: Pin<btn_bank::Btn4>,
+    pub btn5: Pin<btn_bank::Btn5>,
+    pub btn6: Pin<btn_bank::Btn6>,
+}
+
+impl BtnBank {
+    /// Create a new Button bank from individual Button pins.
+    pub fn new(
+        btn1: Pin<btn_bank::Btn1>,
+        btn2: Pin<btn_bank::Btn2>,
+        btn3: Pin<btn_bank::Btn3>,
+        btn4: Pin<btn_bank::Btn4>,
+        btn5: Pin<btn_bank::Btn5>,
+        btn6: Pin<btn_bank::Btn6>,
+    ) -> Self {
+        Self {
+            btn1,
+            btn2,
+            btn3,
+            btn4,
+            btn5,
+            btn6,
+        }
+    }
+
+    /// Create a new Button bank from GPIO raw pins
+    pub fn from_gpio_pins(
+        gpio_btn1: btn_bank::Btn1,
+        gpio_btn2: btn_bank::Btn2,
+        gpio_btn3: btn_bank::Btn3,
+        gpio_btn4: btn_bank::Btn4,
+        gpio_btn5: btn_bank::Btn5,
+        gpio_btn6: btn_bank::Btn6,
+    ) -> Self {
+        Self::new(
+            Pin::new_input(gpio_btn1),
+            Pin::new_input(gpio_btn2),
+            Pin::new_input(gpio_btn3),
+            Pin::new_input(gpio_btn4),
+            Pin::new_input(gpio_btn5),
+            Pin::new_input(gpio_btn6),
+        )
+    }
+
+    /// Get references to all Button pins as an array.
+    pub fn as_pins(&self) -> [&dyn InputPin<Error = Infallible>; 6] {
+        [
+            &self.btn1, &self.btn2, &self.btn3, &self.btn4, &self.btn5, &self.btn6,
+        ]
+    }
+
+    /// Read all button states in one operation
+    /// This function reads the states of all buttons in one operation by reading the BTN register once.
+    #[inline(always)]
+    pub fn read_all_states(&self) -> Result<[bool; 6], Infallible> {
+        // Safety: Read-only, have no other effect
+        let gpio = unsafe { crate::pac::Gpio::steal() };
+        let reg = gpio.btn().read();
+        let states = [
+            reg.btn_input(1).bit_is_set(),
+            reg.btn_input(2).bit_is_set(),
+            reg.btn_input(3).bit_is_set(),
+            reg.btn_input(4).bit_is_set(),
+            reg.btn_input(5).bit_is_set(),
+            reg.btn_input(6).bit_is_set(),
+        ];
+        Ok(states)
+    }
+}
+
+/// AudioViz is a hardware vizualization tool that provides an LED energy-meter
+/// display for audio signals.
+///
+/// It uses the LED bank to represent the amplitude of the audio signal in real-time,
+/// creating a visual representation of the sound. Each LED corresponds to a specific
+/// amplitude range, allowing users to easily see the intensity of the audio signal at
+/// any given moment.
+///
+/// AudioViz takes ownership of the LED bank to ensure exclusive access to the LEDs.
+pub struct AudioViz(LedBank);
+
+impl AudioViz {
+    /// Create a new AudioViz instance from a LedBank.
+    pub fn new(led_bank: LedBank) -> Self {
+        // Safety: We take ownership of the LED bank, ensuring exclusive access to the LEDs.
+        unsafe {
+            Self::enable();
+        }
+        Self(led_bank)
+    }
+    /// Consume the AudioViz instance and bring down the LED bank back to GPIO.
+    pub fn bring_down(self) -> LedBank {
+        // Safety: We are bringing down the LED bank, ensuring that AudioViz is not used after this.
+        unsafe {
+            Self::disable();
+        }
+        self.0
+    }
+
+    /// Enable the AudioViz functionality.
+    ///
+    /// This function enables the AudioViz functionality by configuring the LED bank for audio visualization.
+    /// It is unsafe because the caller must ensure that the LED bank is not used for GPIO while AudioViz is enabled.
+    pub unsafe fn enable() {
+        // Safety: Caller must ensure that the LED bank is not used for GPIO while AudioViz is enabled.
+        let gpio = unsafe { crate::pac::Gpio::steal() };
+        gpio.audio_viz().write(|w| w.enable().set_bit());
+    }
+
+    /// Disable the AudioViz functionality.
+    /// This function disables the AudioViz functionality, allowing the LED bank to be used for GPIO again.
+    /// It is unsafe because the caller must ensure that AudioViz is not used after disabling.
+    pub unsafe fn disable() {
+        // Safety: Caller must ensure that AudioViz is not used after disabling.
+        let gpio = unsafe { crate::pac::Gpio::steal() };
+        gpio.audio_viz().write(|w| w.enable().clear_bit());
+    }
+}
