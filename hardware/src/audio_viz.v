@@ -42,7 +42,7 @@ module audio_viz (
     reg [13:0] energy_sample;
     always @(posedge clk) begin
         if (audio_viz_en) begin
-            centered_audio <= signed_audio - 128;
+            centered_audio <= signed_audio - 128; // This only work if volume is at max, otherwise the DC offset is not 128.
             // This will be a 16-bit value, since the maximum value is 127*127 = 16129
             energy_sample <= centered_audio * centered_audio; 
         end

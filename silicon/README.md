@@ -18,7 +18,8 @@ and the DE1-SoC (Altera Cyclone V board). *See [requirements](https://gist.githu
 - [x] **!** Play/Pause control using buttons
 - [x] **!** On end of track, automatically gets back to the Album list
 - [x] **!** Display track art when playing
-- [x] **!** LED effect (baked in the hardware) -- *it might not be related to the music*
+- [x] **!** LED effect (baked in the hardware) -- *it might not be related to the music*  
+      *Known issue (https://github.com/fusetim/rusty-soc/issues/3): Energy meter works only when volume is at max, otherwise the DC offset is not 128 and the energy calculation is incorrect. This could be fixed by adding a volume control that adjusts the DC offset accordingly.*
 
 #### Assignment Bonus - Additional features to implement if time permits
 - [x] **!** Seek control using buttons (e.g. skip forward/backward by 10s)  
